@@ -1,0 +1,24 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "xappsdk",
+  "version": "1.0.0",
+  "owner": {
+    "name": "Stephen Dong",
+    "email": "stephen@xantus.network"
+  },
+  "metadata": {
+    "description": "Xantus XAppAdKit (xappsdk) tooling — interactive generators + validator for ad placement JSONC config."
+  },
+  "plugins": [
+    {
+      "name": "xapp-placements",
+      "version": "0.6.0",
+      "source": "./xapp-placements",
+      "description": "Generate XAppAdKit ad placement config JSONC files interactively. Targets Xantus admin import format + matches SDK 0.11.9 schema. Includes proactive validator agent.",
+      "author": { "name": "Stephen Dong", "email": "stephen@xantus.network" },
+      "license": "Proprietary",
+      "category": "development",
+      "keywords": ["xantus", "xappsdk", "ads", "admob", "placement", "android", "firebase-remote-config"]
+    }
+  ]
+}
