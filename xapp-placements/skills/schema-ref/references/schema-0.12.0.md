@@ -1,8 +1,17 @@
-# XAppAdKit JSONC Schema — SDK 0.11.9
+# XAppAdKit JSONC Schema — SDK 0.12.0
 
-Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.11.9` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
+Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.12.0` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
 
 File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadata.
+
+## Changes since 0.11.9
+
+| Area | Change |
+|---|---|
+| `xapp_ad_units[*].preload_trigger` | Enum gains fourth value `SCREEN`. Now `INIT_CRITICAL \| INIT_DELAYED \| LAZY \| SCREEN`, default `INIT_DELAYED`. `SCREEN` is first-class (no longer a legacy alias). Legacy mapping updated: `"INIT"` → `INIT_DELAYED` (WARN). **`"SCREEN"` no longer maps to LAZY** — it is parsed as the `SCREEN` enum directly. Unknown values → `INIT_DELAYED` + WARN. `SCREEN` semantics: no init preload; buffer fills only when a bound screen appears via `trackScreenShow(screenName)` matching a `preload_on_screens` entry. Mutually exclusive with INIT_*/LAZY. |
+| `xapp_ad_units[*].preload_on_screens` | NEW 0.12.0. Array, default `[]`. Only honored when `preload_trigger == "SCREEN"`. Each entry: `screen_name` (string, REQUIRED), `delay_ms` (int 0..60000, default 0), `once` (bool, default true — fill once per session/process; false = every screen_show). Blank/missing `screen_name` → entry dropped + WARN. `delay_ms` outside 0..60000 → coerced. |
+| `ui_config.fullscreen` | NEW 0.12.0. Sub-block under `ui_config`, `fullscreen_hero_v1` template ONLY (other templates ignore it). Controls layout order, info background, and action container (countdown + close button). See §6 for full shape. |
+| `xapp_ad_units[*].media_aspect_ratio` | Valid set gains `"auto"`. Now: `any \| landscape \| portrait \| square \| auto` (case-insensitive), default null = ANY. `"auto"` = wrap media to the creative's natural size. |
 
 ## Changes since 0.11.8
 
@@ -125,8 +134,9 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
   "floor_tag": "nofloor",         // optional. one of: h | m | l | nofloor (default nofloor)
   "enabled": true,                // optional default true
   "buffer_size": 1,               // int >= 1 (coerced), default 1
-  "preload_trigger": "INIT_DELAYED", // enum INIT_CRITICAL | INIT_DELAYED | LAZY. DEFAULT INIT_DELAYED.
-                                  //   legacy "INIT"->INIT_DELAYED, "SCREEN"->LAZY (WARN); unknown->INIT_DELAYED+WARN
+  "preload_trigger": "INIT_DELAYED", // enum INIT_CRITICAL | INIT_DELAYED | LAZY | SCREEN. DEFAULT INIT_DELAYED.
+                                  //   legacy "INIT"->INIT_DELAYED (WARN); unknown->INIT_DELAYED+WARN.
+                                  //   SCREEN (NEW 0.12.0): no init preload; buffer fills on trackScreenShow() matching preload_on_screens. Mutually exclusive with INIT_*/LAZY.
   "auto_reload_on_show": true,    // bool, default true
   "reload_interval_sec": 0,       // int >= 0 (coerced). 0 = off. banner/native timer-refresh.
                                   //   COERCED to 0 if meta_mediation_enabled=true (Meta forbids auto-refresh)
@@ -134,7 +144,15 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
   "meta_mediation_enabled": false,// bool default false. true ONLY when AdMob chain includes Meta Audience Network. banner/native only.
   "http_timeout_ms": null,        // NEW. int or null (default null). range 5000-30000; out-of-range -> null + WARN.
                                   //   Must be < consuming placement's load_timeout_ms (cross-check WARN).
-  "media_aspect_ratio": null,     // NEW. string or null (default null). NATIVE only. any|landscape|portrait|square (case-insensitive).
+  "media_aspect_ratio": null,     // NEW. string or null (default null). NATIVE only. any|landscape|portrait|square|auto (case-insensitive, NEW 0.12.0: +auto).
+                                  //   "auto" = wrap media to creative's natural size.
+  "preload_on_screens": [         // NEW 0.12.0. Only honored when preload_trigger == "SCREEN".
+    {
+      "screen_name": "native_onb_2", // string, REQUIRED. Blank/missing entry dropped + WARN.
+      "delay_ms": 200,            // int 0..60000 (coerced), default 0. Wait before fill.
+      "once": true                // bool, default true. true = fill once per session (process); false = every screen_show.
+    }
+  ],
   "_meta": {                      // admin-only audit. SDK ignores
     "createdBy": "<email>", "updatedBy": "<email>",
     "createdAt": "<ISO 8601 UTC>", "updatedAt": "<ISO 8601 UTC>"
@@ -226,13 +244,26 @@ Cross-rules enforced by the SDK parser:
     "container_bg_color": "#00000000", // hex, default transparent
     "container_shadow": false       // bool, default false
   },
-  "banner": {                       // NEW 0.11.9. banner_horizontal_v1 template ONLY (others ignore)
+  "banner": {                       // NEW 0.12.0. banner_horizontal_v1 template ONLY (others ignore)
     "height_dp": 125,               // int default 125, coerced >=1. WARN when < 64 (clip risk).
     "padding_dp": 12                // int default 12, coerced >=0. row inner padding (all sides).
   },
+  "fullscreen": {                   // NEW 0.12.0. fullscreen_hero_v1 template ONLY; other templates ignore.
+    "layout_order": ["badge", "media", "info"], // permutation of exactly {badge, media, info}; else default + WARN. Default ["badge","media","info"].
+    "info_bg": "#00000000",         // hex ARGB, default "#00000000". Invalid hex -> default.
+    "action_container": {           // top-anchored slot (countdown + close)
+      "position": "right",          // "left" | "right", default "right". Invalid -> default + WARN.
+      "duration_sec": 5,            // int 0..15 (coerced), default 5. Countdown before close becomes active.
+      "auto_close": false,          // bool, default false.
+      "close_button": {
+        "visible": true,            // bool, default true.
+        "icon": "x"                 // "x" | "arrow_forward", default "x". Invalid -> default + WARN.
+      }
+    }
+  },
   "ad_info": {
     "visible": true,
-    "ad_icon": { "visible": true, "corner_radius_dp": 0, "size_dp": null }, // corner_radius_dp (int >=0, default 0); size_dp NEW 0.11.9 (int or null, coerced >=1 when set; null = per-template default 56/50/48/50/48)
+    "ad_icon": { "visible": true, "corner_radius_dp": 0, "size_dp": null }, // corner_radius_dp (int >=0, default 0); size_dp NEW 0.12.0 (int or null, coerced >=1 when set; null = per-template default 56/50/48/50/48)
     "ad_title": { "visible": true, "text_color": "#000000",   "font_size": 16 }, // font_size NEW (sp >=1)
     "ad_body":  { "visible": true, "text_color": "#B3000000", "font_size": 14 },
     "ad_badge": {                   // NO `visible` field — badge always renders
@@ -285,7 +316,7 @@ HARD ERRORS (admin will reject):
 5. ad_unit `vendor_id` blank or duplicate within pool.
 6. ad_unit `format` not in valid enum (after alias resolution); `native_fullscreen` is invalid — migrate to `native`.
 7. ad_unit `mediation` not in `{ADMOB, MAX, IRONSOURCE, META}`. Practically generate `ADMOB`; flag MAX/IRONSOURCE/META as not-runtime-active.
-8. ad_unit `preload_trigger` unknown (legacy `INIT`/`SCREEN` mapped with WARN; default INIT_DELAYED).
+8. ad_unit `preload_trigger` unknown value (legacy `"INIT"` → `INIT_DELAYED` + WARN; `"SCREEN"` is now first-class, not a legacy alias; any other unknown → `INIT_DELAYED` + WARN).
 9. registry entry missing `xapp_p_` prefix.
 10. registry references a placement key with no corresponding `xapp_p_<name>` object.
 11. `xapp_p_<name>` object exists but key not in registry.
@@ -310,13 +341,13 @@ HARD ERRORS (admin will reject):
 30. `border.color` not matching hex regex.
 31. `splash_min_duration_ms` outside [0, 15000] (SDK clamps to 1000; admin should reject out-of-range).
 32. `http_timeout_ms` present and outside 5000–30000 (SDK clamps to null + WARN; admin should reject out-of-range).
-33. `media_aspect_ratio` not in `{any, landscape, portrait, square}` (SDK → null + WARN); also flag when set on a non-native unit.
+33. `media_aspect_ratio` not in `{any, landscape, portrait, square, auto}` (SDK → null + WARN); also flag when set on a non-native unit. NEW 0.12.0: `"auto"` is now valid.
 34. `skip_delay_sec` outside [0, 15] (SDK coerces; admin should reject).
 35. `preload.circuit_backoff_sec` / `circuit_threshold` < 1 (SDK coerces to ≥1).
 36. `xapp_p_<name>.reuse_strategy` present AND not in `{own_first, reuse_before_load, reuse_first}` — admin `z.enum` rejects import (SDK silently falls back to `own_first`). ABSENT = OK (defaults `own_first`).
 37. `xapp_config.cross_unit_reuse_enabled` present AND not boolean.
-38. NEW 0.11.9: `ui_config.banner.height_dp` / `banner.padding_dp` present AND not an integer, or negative (`height_dp` coerced ≥1, `padding_dp` coerced ≥0; admin should reject non-int / negative). ABSENT = OK (defaults 125 / 12).
-39. NEW 0.11.9: `ui_config.ad_info.ad_icon.size_dp` present AND not an integer or < 1 (SDK coerces ≥1 when set; null = per-template default). ABSENT / null = OK.
+38. NEW 0.12.0: `ui_config.banner.height_dp` / `banner.padding_dp` present AND not an integer, or negative (`height_dp` coerced ≥1, `padding_dp` coerced ≥0; admin should reject non-int / negative). ABSENT = OK (defaults 125 / 12).
+39. NEW 0.12.0: `ui_config.ad_info.ad_icon.size_dp` present AND not an integer or < 1 (SDK coerces ≥1 when set; null = per-template default). ABSENT / null = OK.
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
@@ -334,5 +365,12 @@ WARNINGS:
 - `skip_delay_sec` set on a non-`fullscreen_hero_v1` template (SDK ignores for inline renderers).
 - NEW 0.11.8: placement `reuse_strategy` ≠ `own_first` (or `xapp_config.cross_unit_reuse_enabled: true`) while `xapp_config.late_reuse_enabled: false` — reuse tiers are disabled, so the strategy / cross-unit borrow is a no-op (gated by `late_reuse_enabled`).
 - NEW 0.11.8: `xapp_config.preload.vendor_dedupe` default is now `false` (was `true`) — same-`vendor_id` units load in parallel unless explicitly set `true`.
-- NEW 0.11.9: `ui_config.banner.height_dp` < 64 — SDK WARNs (ad content may clip; AdMob policy risk). Only effective on the `banner_horizontal_v1` template.
-- NEW 0.11.9: `ui_config.banner` block present on a non-`banner_horizontal_v1` template — SDK ignores (other templates do not consume it) — strip.
+- NEW 0.12.0: `ui_config.banner.height_dp` < 64 — SDK WARNs (ad content may clip; AdMob policy risk). Only effective on the `banner_horizontal_v1` template.
+- NEW 0.12.0: `ui_config.banner` block present on a non-`banner_horizontal_v1` template — SDK ignores (other templates do not consume it) — strip.
+- NEW 0.12.0: `preload_trigger == "SCREEN"` AND `preload_on_screens` empty (or absent) — SDK WARNs (unit will never preload).
+- NEW 0.12.0: `preload_on_screens` present on a unit whose `preload_trigger` ≠ `"SCREEN"` — SDK ignores + WARN.
+- NEW 0.12.0: `preload_on_screens[].screen_name` blank — entry dropped + WARN; `delay_ms` outside 0..60000 coerced.
+- NEW 0.12.0: `fullscreen.layout_order` not a permutation of `{badge, media, info}` — SDK uses default `["badge","media","info"]` + WARN.
+- NEW 0.12.0: `fullscreen.action_container.position` not in `{left, right}` — SDK uses default `"right"` + WARN.
+- NEW 0.12.0: `fullscreen.close_button.icon` not in `{x, arrow_forward}` — SDK uses default `"x"` + WARN.
+- NEW 0.12.0: `fullscreen` block present on a non-`fullscreen_hero_v1` template — SDK ignores (strip).

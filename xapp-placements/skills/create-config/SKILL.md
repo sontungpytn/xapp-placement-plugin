@@ -10,7 +10,7 @@ You are scaffolding a new XAppAdKit JSONC config file. The user is a Xantus dev 
 
 ## Step 0 — Load schema reference
 
-Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.11.9.md` and `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/presets.md` into your context. You will need them throughout.
+Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.12.0.md` and `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/presets.md` into your context. You will need them throughout.
 
 ## Step 1 — Collect project metadata
 
@@ -79,7 +79,7 @@ h. Ask "Add another placement? (yes / done)".
 ## Step 6 — Assemble + write
 
 Build full JSONC structure in this exact order:
-1. Top JSONC header comment (3-4 lines: project name, SDK version 0.11.9, generated date, generator = `xapp-placements plugin`).
+1. Top JSONC header comment (3-4 lines: project name, SDK version 0.12.0, generated date, generator = `xapp-placements plugin`).
 2. `_project` block.
 3. `xapp_config` block (use preset from presets.md; `debug_mode: true` if firebase_project_id contains `-dev`, else `false`). Include the globals with their defaults: `splash_min_duration_ms: 1000`, `mute_ad_video: false`, `use_admob_startpreload: false`, `late_reuse_enabled: true`, `cross_unit_reuse_enabled: true` (NEW 0.11.8), and under `preload`: `vendor_dedupe: false` (default changed to false in 0.11.8), `circuit_threshold: 3`, `circuit_backoff_sec: 60` (value in SECONDS). Allow user overrides but do not block on them.
 4. `xapp_ad_units` array.
