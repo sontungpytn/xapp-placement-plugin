@@ -60,7 +60,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.11.5**: `preload.circuit_backoff_sec` < 1 (SDK coerces to ≥1; value is in SECONDS — SDK stores ms = sec×1000).
 - **NEW 0.11.8**: `cross_unit_reuse_enabled` present AND not boolean (default true). Allows a placement to borrow a buffered fullscreen ad from a unit it does not reference (matched by AdFormat); gated by `late_reuse_enabled=true`.
 - **NOTE 0.11.8**: `preload.vendor_dedupe` default is now `false` (was `true`). Not an error in any case — informational when the field is absent.
-- **NEW 0.12.3**: `firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean().default(true)`). ABSENT = OK (default true). When `false`, SDK suppresses ONLY the `ad_impression` Firebase event — not an error, just confirm intent (GA4 revenue double-count avoidance).
+- **NEW 0.12.3**: `firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean().default(true)`). ABSENT = OK (SDK/admin schema default true). NOTE: generator emits `false` by Xantus convention (AdMob↔GA4 server-side revenue) — `false` is expected, only a type mismatch is an error.
 
 ### `xapp_ad_units` (each entry)
 - `id` missing OR fails regex `^[a-z][a-z0-9_]*$`.
@@ -159,7 +159,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.12.0**: `preload_on_screens[].delay_ms` outside 0..60000 — SDK coerces to nearest bound.
 - **NEW 0.12.0**: `ui_config.ad_media.aspect_ratio` = `auto` is now valid (gains alongside existing `\d+:\d+` values) — do NOT flag.
 - **NEW 0.12.3**: `reload_after_show_delay_ms > 0` AND `auto_reload_on_show: false` on the same ad_unit — the delay is a no-op (refill never auto-fires). Recommend removing one or the other.
-- **NEW 0.12.3**: `firebase_ad_impression_enabled: false` present — confirm intent: SDK stops emitting the `ad_impression` event (GA4/BQ dashboards keyed on it go blind). Use only when AdMob↔GA4 linking already feeds `totalAdRevenue` server-side.
+- **NEW 0.12.3**: `firebase_ad_impression_enabled: true` present — INFO, not an error. Xantus default is `false` (AdMob↔GA4 linking pushes ad revenue server-side; client-side `ad_impression` off to avoid GA4 `totalAdRevenue` double-count). `true` is valid only when a project lacks the AdMob↔GA4 link and needs the client-side event — confirm intent. `false` (or absent-but-emitted-false by the generator) = expected, do NOT flag.
 - **NEW 0.12.3**: `ui_config_triggered` present but byte-identical to `ui_config` — redundant (triggered render would look the same); recommend dropping it unless intentional.
 
 ## Output Format

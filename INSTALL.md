@@ -45,8 +45,8 @@ Restart Claude Code session.
 
 ```bash
 git clone git@github.com:sontungpytn/xapp-placement-plugin.git /tmp/xappsdk
-mkdir -p ~/.claude/plugins/cache/xappsdk/xapp-placements/0.8.0
-cp -R /tmp/xappsdk/xapp-placements/* ~/.claude/plugins/cache/xappsdk/xapp-placements/0.8.0/
+mkdir -p ~/.claude/plugins/cache/xappsdk/xapp-placements/0.8.1
+cp -R /tmp/xappsdk/xapp-placements/* ~/.claude/plugins/cache/xappsdk/xapp-placements/0.8.1/
 mkdir -p ~/.claude/plugins/marketplaces/xappsdk/.claude-plugin
 cp /tmp/xappsdk/.claude-plugin/marketplace.json ~/.claude/plugins/marketplaces/xappsdk/.claude-plugin/
 ```

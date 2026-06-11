@@ -1,6 +1,6 @@
 {
   "name": "xapp-placements",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Generate XAppAdKit (xappsdk) ad placement config JSONC files interactively. Targets Xantus admin import format + matches SDK 0.12.3 schema. Includes proactive validator agent.",
   "author": {
     "name": "Stephen",

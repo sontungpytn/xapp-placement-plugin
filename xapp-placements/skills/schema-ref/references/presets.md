@@ -83,7 +83,7 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
   "use_admob_startpreload": false,
   "late_reuse_enabled": true,
   "cross_unit_reuse_enabled": true,
-  "firebase_ad_impression_enabled": true,
+  "firebase_ad_impression_enabled": false,
   "preload": {
     "max_concurrent_loads": 3,
     "init_delayed_after_ms": 3000,
@@ -111,7 +111,7 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
 
 `cross_unit_reuse_enabled` (NEW 0.11.8): bool, default true. When true (AND `late_reuse_enabled` also true), a buffered fullscreen ad in one unit may be borrowed by a placement that does NOT reference that unit, matched by AdFormat — last tier before live-load. Revenue stays with the origin unit.
 
-`firebase_ad_impression_enabled` (NEW 0.12.3): bool, default true. Kill-switch — when false, the SDK suppresses ONLY the `ad_impression` Firebase event (all other ad events still fire). Set false to avoid double-counting GA4 `totalAdRevenue` when AdMob↔GA4 linking already feeds revenue server-side. Keep true unless GA4 shows inflated ad revenue.
+`firebase_ad_impression_enabled` (NEW 0.12.3): bool. **SDK/admin schema default true; generator emits `false`.** When false, the SDK suppresses ONLY the `ad_impression` Firebase event (all other ad events still fire) — Xantus default is to let AdMob↔GA4 linking push ad revenue server-side, so the SDK-side event is off to avoid double-counting GA4 `totalAdRevenue`. Set true only if a project needs the client-side `ad_impression` event (e.g. no AdMob↔GA4 link).
 
 `preload.vendor_dedupe` (DEFAULT CHANGED 0.11.8 → false, was true): when true, units sharing a `vendor_id` load sequentially (spaced by `vendor_dedupe_spacing_ms`); when false they load in parallel. Default now false.
 
