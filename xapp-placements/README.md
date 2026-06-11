@@ -2,6 +2,17 @@
 
 Fast generator for XAppAdKit (xappsdk) ad placement config JSONC files. Output matches Xantus admin import format + SDK 0.12.0 schema.
 
+## Install
+
+In Claude Code:
+
+```
+/plugin marketplace add sontungpytn/xapp-placement-plugin
+/plugin install xapp-placements@xappsdk
+```
+
+Restart session, verify `/help` shows `/xapp-placements:*` skills. Other methods (local clone, manual cache, Cowork): see [INSTALL.md](../INSTALL.md).
+
 ## What
 
 - `/xapp-placements:create-config` — interactive wizard, scaffold full JSONC from scratch (project meta + global config + ad units + placements). Starter preset = 4 standard AdMob ad units (appopen, inter, native, reward) with TEST IDs.
