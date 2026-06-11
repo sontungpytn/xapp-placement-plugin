@@ -25,7 +25,7 @@ Ask user (`AskUserQuestion`):
 - `vendor_id` — HARD-BLOCK if duplicate of existing.
 - `mediation` — enum `ADMOB | MAX | IRONSOURCE | META` (case-insensitive). Only `ADMOB` is active at runtime; MAX/IRONSOURCE/META are reserved (META requires a `meta_config` object or the unit is skipped). Do not ask user; auto-fill `ADMOB`.
 - `format` — enum: `appopen | inter | native | banner | reward | rewinter`.
-- `buffer_size` — int >= 1. Defaults: appopen=1, inter=2, native=3, reward=2.
+- `buffer_size` — int >= 1. Default 1 for ALL formats. Only go higher when the user explicitly asks — oversized buffers preload ads that never show, tanking show rate.
 - `preload_trigger` — `INIT_CRITICAL | INIT_DELAYED | LAZY | SCREEN`. Default INIT_DELAYED. **NEW 0.12.0**: `SCREEN` triggers preload on specific screen events — when selected, also collect `preload_on_screens` (see below).
 - `preload_on_screens` — **NEW 0.12.0**: required (not absent) when `preload_trigger: "SCREEN"` (else the unit never preloads). Array of `{ "screen_name": <string, required non-blank>, "delay_ms": <int 0..60000, default 0>, "once": <bool, default true> }`. Each entry fires preload when the named screen is entered (after `delay_ms` ms; `once: true` = only on first visit per session). Omit entirely when `preload_trigger` ≠ `SCREEN` (SDK ignores it + strips).
 - `auto_reload_on_show` — boolean, default true.
