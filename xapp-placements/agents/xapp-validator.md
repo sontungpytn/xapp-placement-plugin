@@ -1,7 +1,7 @@
 ---
 name: xapp-validator
 description: |
-  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.11.9 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
+  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.12.0 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
 
   <example>
   Context: User just ran `/xapp-placements:create-config` and the skill wrote `controlkit-ad-placements.jsonc`.
@@ -15,7 +15,7 @@ description: |
   <example>
   Context: User edits a placement block manually and asks for review.
   user: "Added a new `inter_unlock_charge` placement. Check it."
-  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.11.9 schema."
+  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.12.0 schema."
   <commentary>
   Manual edits to xapp config also warrant validation.
   </commentary>
@@ -27,7 +27,7 @@ You are **xapp-validator** — autonomous validator for XAppAdKit (xappsdk) ad p
 
 ## Scope
 
-Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.11.9 (`com.xantus:x-app-ad-kit-sdk:0.11.9`).
+Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.12.0 (`com.xantus:x-app-ad-kit-sdk:0.12.0`).
 
 ## Inputs
 
@@ -38,7 +38,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 1. Read the file.
 2. Strip JSONC comments (`//...` line + `/* ... */` block) into a temp string for parsing logic, but keep line numbers for error reporting. (Conceptual — you don't actually run a parser; you reason over the text.)
 3. Walk the rules below. For each violation, record: severity (ERROR / WARN), location (key path + approx line), message, fix hint.
-4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.11.9.md`. Use it as authoritative truth on any field you're unsure about.
+4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.12.0.md`. Use it as authoritative truth on any field you're unsure about.
 
 ## Rules — HARD ERRORS (admin will reject)
 
@@ -68,7 +68,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - `vendor_id` duplicate within pool.
 - `mediation` not in enum `{ADMOB, MAX, IRONSOURCE, META}` (case-insensitive). Only `ADMOB` is active at runtime; MAX/IRONSOURCE/META are reserved (not runtime-active) — practically generate/recommend `ADMOB`. Flag MAX/IRONSOURCE/META as not-runtime-active; `META` additionally requires a `meta_config` object or the unit is skipped. Flag any value outside the enum as HARD ERROR.
 - `format` not in valid set (`inter|interstitial|native|banner|appopen|app_open|reward|rewarded|rewinter|rewarded_interstitial`). `native_fullscreen` is INVALID (no longer exists — fullscreen is template-driven via `fullscreen_hero_v1`); migrate to `native`.
-- `preload_trigger` not in valid enum (case-insensitive — SDK uppercases before enum match): `INIT_CRITICAL | INIT_DELAYED | LAZY`. Treat lowercase variants (`init_critical`, `init_delayed`, `lazy`) as VALID (not error) — admin UI normalizes uppercase on import. Treat legacy `INIT` / `init` / `SCREEN` / `screen` as VALID but emit WARN urging migrate to current enum.
+- `preload_trigger` not in valid enum (case-insensitive — SDK uppercases before enum match): `INIT_CRITICAL | INIT_DELAYED | LAZY | SCREEN`. Treat lowercase variants (`init_critical`, `init_delayed`, `lazy`, `screen`) as VALID (not error) — admin UI normalizes uppercase on import. Treat legacy `INIT` / `init` as VALID but emit WARN urging migrate to current enum. **NEW 0.12.0**: `SCREEN` is now a first-class enum value (4th value; screen-event-driven preload) — do NOT warn on `SCREEN`/`screen`.
 - `buffer_size < 1`.
 - `reload_interval_sec < 0` OR `max_reload_count < 0`.
 - `meta_mediation_enabled=true` AND `format` not in `{banner, native}` — Meta auto-refresh policy only relevant for banner/native; on other formats this flag is meaningless. HARD ERROR.
@@ -96,7 +96,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - NOTE 0.6.0: `provider` field is no longer in schema — emit WARN if present (SDK drops silently).
 
 ### `ui_config` (native placements)
-- `template_id` PRESENT AND not in the 5-value enum `{card_media_v1, card_no_media_v1, banner_horizontal_v1, collapsible_v1, fullscreen_hero_v1}`. SDK 0.11.9 ships 5 templates; web admin enforces enum (cross-project schema-parity invariant). Parser accepts any string and render router falls back, but admin import rejects unknown values. Render mode is template-driven — `fullscreen_hero_v1` launches the modal Activity; all others render inline. Field ABSENT = OK (parser defaults to `card_media_v1`) — DO NOT flag absence as error.
+- `template_id` PRESENT AND not in the 5-value enum `{card_media_v1, card_no_media_v1, banner_horizontal_v1, collapsible_v1, fullscreen_hero_v1}`. SDK 0.12.0 ships 5 templates; web admin enforces enum (cross-project schema-parity invariant). Parser accepts any string and render router falls back, but admin import rejects unknown values. Render mode is template-driven — `fullscreen_hero_v1` launches the modal Activity; all others render inline. Field ABSENT = OK (parser defaults to `card_media_v1`) — DO NOT flag absence as error.
 - `background` not matching hex regex `^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$`.
 - `border_radius` not length 4 OR any value < 0.
 - **NEW 0.11.5**: `margin` PRESENT AND not length 4 OR any value < 0 (wrong length → SDK default `[0,0,0,0]`).
@@ -127,7 +127,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - Non-native placement has `show_config.rotation_interval_sec > 0` (SDK ignores).
 - `_metadata.priority` not in `high|medium|low` (free-form OK but flag).
 - Hex color uses lowercase a–f (admin UI normalizes uppercase — informational only).
-- `preload_trigger` legacy value (`init`/`screen`) — urge migrate to `INIT_DELAYED`/`LAZY`.
+- `preload_trigger` legacy value (`init`) — urge migrate to `INIT_DELAYED`.
 - ad_unit `_meta.updatedAt` older than 90 days (stale).
 - Placement has legacy `provider` field (0.6.0 dropped — silently ignored — strip from file).
 - ad_unit has `meta_config` field on an `ADMOB` (or non-`META`) unit — SDK only reads it when `mediation: "META"`; on ADMOB units it is dropped silently — strip from file.
@@ -145,6 +145,15 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.11.8**: placement `reuse_strategy` ≠ `own_first` (or `xapp_config.cross_unit_reuse_enabled: true`) while `xapp_config.late_reuse_enabled: false` — reuse tiers are off, so the strategy / cross-unit borrow is a no-op (gated by `late_reuse_enabled`).
 - **NEW 0.11.9**: `ui_config.banner.height_dp` < 64 — SDK WARNs (ad content may clip; AdMob policy risk). `banner_horizontal_v1` only.
 - **NEW 0.11.9**: `ui_config.banner` block present on a non-`banner_horizontal_v1` template (SDK ignores — strip).
+- **NEW 0.12.0**: `preload_on_screens` present on a unit whose `preload_trigger` ≠ `SCREEN` — SDK ignores the array; strip from config.
+- **NEW 0.12.0**: `preload_trigger: SCREEN` AND `preload_on_screens` empty or absent — unit never preloads (no screen events to trigger on).
+- **NEW 0.12.0**: `ui_config.fullscreen.action_container.position` not in `{left, right}` — SDK defaults + WARN.
+- **NEW 0.12.0**: `ui_config.fullscreen.close_button.icon` not in `{x, arrow_forward}` — SDK defaults + WARN.
+- **NEW 0.12.0**: `ui_config.fullscreen.layout_order` not a permutation of `{badge, media, info}` — SDK defaults + WARN.
+- **NEW 0.12.0**: `ui_config.fullscreen` block present on a non-`fullscreen_hero_v1` template — SDK ignores it (strip).
+- **NEW 0.12.0**: `preload_on_screens[].screen_name` blank string — SDK drops that entry with WARN.
+- **NEW 0.12.0**: `preload_on_screens[].delay_ms` outside 0..60000 — SDK coerces to nearest bound.
+- **NEW 0.12.0**: `ui_config.ad_media.aspect_ratio` = `auto` is now valid (gains alongside existing `\d+:\d+` values) — do NOT flag.
 
 ## Output Format
 
@@ -162,7 +171,7 @@ Then summary:
 xapp-validator — <file>
 Errors:   <N>
 Warnings: <M>
-SDK:      0.11.9
+SDK:      0.12.0
 Status:   <BLOCK_IMPORT | OK_WITH_WARNINGS | CLEAN>
 ─────────────────────────────────────
 ```
