@@ -1,6 +1,6 @@
 # xapp-placements
 
-Fast generator for XAppAdKit (xappsdk) ad placement config JSONC files. Output matches Xantus admin import format + SDK 0.12.0 schema.
+Fast generator for XAppAdKit (xappsdk) ad placement config JSONC files. Output matches Xantus admin import format + SDK 0.12.3 schema.
 
 ## Install
 
@@ -19,16 +19,17 @@ Restart session, verify `/help` shows `/xapp-placements:*` skills. Other methods
 - `/xapp-placements:add-placement` — append 1 placement to existing JSONC. Auto-update `xapp_registry`. Native templates via named preset OR screenshot input.
 - `/xapp-placements:add-ad-unit` — append 1 ad unit to pool. Enforce id regex + vendor uniqueness.
 - `/xapp-placements:validate` — invoke `xapp-validator` agent on a file.
-- `/xapp-placements:schema-ref` — print canonical SDK 0.12.0 schema reference.
+- `/xapp-placements:schema-ref` — print canonical SDK 0.12.3 schema reference.
 
 Validator agent (`xapp-validator`) runs **proactively** after every config write — catches schema violations before they hit admin import.
 
 ## SDK version
 
-Pinned to `com.xantus:x-app-ad-kit-sdk:0.12.0`. Bump plugin when SDK schema changes.
+Pinned to `com.xantus:x-app-ad-kit-sdk:0.12.3`. Bump plugin when SDK schema changes.
 
 ## Changelog
 
+- **0.8.0** (2026-06-11): Sync to SDK 0.12.3. New ad-unit `reload_after_show_delay_ms` (long ≥0, default 0; admin caps 0..60000) — delays the reload-after-show buffer refill. New `xapp_config.firebase_ad_impression_enabled` (bool, default true) — kill-switch suppressing ONLY the `ad_impression` Firebase event to avoid GA4 `totalAdRevenue` double-count. New placement `ui_config_triggered` (optional second `ui_config`, same shape) — native render variant for `triggered=true`. NOTE 0.12.1 (telemetry only): Firebase events `screen_show`/`screen_exit` renamed `x_app_screen_show`/`x_app_screen_exit`; SDK also adds an always-on `ad_revenue` event — no config-file impact, but downstream dashboards must migrate.
 - **0.7.1** (2026-06-11): Generator default `buffer_size` is now `1` for ALL formats (was appopen=1, inter=2, native=3, reward=2). Oversized buffers preload ads that never show → low show rate. Matches SDK parser default (1). Go higher only on explicit request.
 - **0.7.0** (2026-06-08): Sync to SDK 0.12.0. New `preload_trigger: "SCREEN"` (4th value; screen-event-driven preload) + ad-unit `preload_on_screens` array. New `ui_config.fullscreen` block (`layout_order`, `info_bg`, `action_container` with `position`/`duration_sec`/`auto_close`/`close_button{visible,icon}`) — `fullscreen_hero_v1` only. `media_aspect_ratio` gains `auto`.
 - **0.6.0** (2026-06-04): Sync to SDK 0.11.9. New native `ui_config.banner` sizing block (`{height_dp default 125, padding_dp default 12}`) — `banner_horizontal_v1` template only; SDK WARNs when `height_dp < 64`. New `ui_config.ad_info.ad_icon.size_dp` (int or null; coerced ≥1 when set; null = per-template default) — advertiser-icon size across all native templates. Generator default `reload_interval_sec` is now `0` for ALL formats (was 30 for native; SDK parser default has always been 0).

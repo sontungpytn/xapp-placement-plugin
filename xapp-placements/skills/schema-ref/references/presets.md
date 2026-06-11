@@ -83,6 +83,7 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
   "use_admob_startpreload": false,
   "late_reuse_enabled": true,
   "cross_unit_reuse_enabled": true,
+  "firebase_ad_impression_enabled": true,
   "preload": {
     "max_concurrent_loads": 3,
     "init_delayed_after_ms": 3000,
@@ -110,6 +111,8 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
 
 `cross_unit_reuse_enabled` (NEW 0.11.8): bool, default true. When true (AND `late_reuse_enabled` also true), a buffered fullscreen ad in one unit may be borrowed by a placement that does NOT reference that unit, matched by AdFormat — last tier before live-load. Revenue stays with the origin unit.
 
+`firebase_ad_impression_enabled` (NEW 0.12.3): bool, default true. Kill-switch — when false, the SDK suppresses ONLY the `ad_impression` Firebase event (all other ad events still fire). Set false to avoid double-counting GA4 `totalAdRevenue` when AdMob↔GA4 linking already feeds revenue server-side. Keep true unless GA4 shows inflated ad revenue.
+
 `preload.vendor_dedupe` (DEFAULT CHANGED 0.11.8 → false, was true): when true, units sharing a `vendor_id` load sequentially (spaced by `vendor_dedupe_spacing_ms`); when false they load in parallel. Default now false.
 
 `preload.circuit_threshold` (NEW 0.11.5): int coerced ≥1, default 3. Consecutive NO_FILL count that trips the per-unit circuit breaker.
@@ -129,7 +132,7 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
 
 ## Native UI presets (5 named — pick by name)
 
-SDK 0.12.0 supports 5 `template_id` values. Pick template by content shape; the named preset below selects template + color scheme + layout knobs together.
+SDK 0.12.3 supports 5 `template_id` values. Pick template by content shape; the named preset below selects template + color scheme + layout knobs together.
 
 - `card_media_v1` — card with hero media. Renders inline. Use for detail/preview screens.
 - `card_no_media_v1` — card, no media. Renders inline. Use for compact promo / success screens.
@@ -137,7 +140,7 @@ SDK 0.12.0 supports 5 `template_id` values. Pick template by content shape; the 
 - `collapsible_v1` (NEW) — banner that expands to a full card (uses the `collapse_arrow` block). Renders inline. Use for `ncollap_*` collapsible native placements.
 - `fullscreen_hero_v1` (NEW) — fullscreen modal takeover (launches the modal Activity, honors `skip_delay_sec`). All other templates render inline. Use for `nfull_*` interstitial-style native placements.
 
-All native ads in SDK 0.12.0 render with a border (AdMob "Ads disguised as content" policy). Each preset below carries an explicit `border` block matching the card background tone. The border block now also has a `visible` field (default true) alongside `color` + `width_dp`; the presets omit `visible`, so `"visible": true` is the implicit default. Omit the whole block to fall back to SDK default `{visible: true, color: "#E0E0E0", width_dp: 1}`.
+All native ads in SDK 0.12.3 render with a border (AdMob "Ads disguised as content" policy). Each preset below carries an explicit `border` block matching the card background tone. The border block now also has a `visible` field (default true) alongside `color` + `width_dp`; the presets omit `visible`, so `"visible": true` is the implicit default. Omit the whole block to fall back to SDK default `{visible: true, color: "#E0E0E0", width_dp: 1}`.
 
 `ad_badge.visible` does NOT exist in SDK 0.11.9 — badge always renders. Presets do not include the field. `ad_badge.text` accepts only `{"Ad", "Sponsored", "Promoted", "Quảng cáo"}` — any other value normalizes to "Ad" at parse with WARN.
 

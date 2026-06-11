@@ -1,8 +1,17 @@
-# XAppAdKit JSONC Schema — SDK 0.12.0
+# XAppAdKit JSONC Schema — SDK 0.12.3
 
-Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.12.0` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
+Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.12.3` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
 
 File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadata.
+
+## Changes since 0.12.0
+
+| Area | Change |
+|---|---|
+| `xapp_ad_units[*].reload_after_show_delay_ms` | NEW 0.12.3. Long ≥0, default 0. Delay (ms) before the reload-after-show buffer refill. `0` = immediate. Effective delay at show time = `max(this, fullscreen auto-delay derived from the placement's min_interval_sec)`. Only meaningful when `auto_reload_on_show: true`. SDK coerces `< 0` → 0 (no upper cap). **Admin import caps it 0..60000** (`z.number().int().min(0).max(60000)`) — values > 60000 REJECTED on import even though the SDK tolerates them. |
+| `xapp_config.firebase_ad_impression_enabled` | NEW 0.12.3. Bool default true. Remote kill-switch — when `false`, `FirebaseBridge` suppresses the `ad_impression` Firebase event; ALL other ad events still emit. Use to avoid double-counting GA4 `totalAdRevenue` when AdMob↔GA4 linking already feeds ad revenue server-side. Admin schema: `z.boolean().default(true)`. (SDK 0.12.x also emits an always-on `ad_revenue` event alongside the gated `ad_impression` — telemetry only, no config key.) |
+| `xapp_p_<name>.ui_config_triggered` | NEW 0.12.3. Optional second `ui_config` (SAME shape as `ui_config`, see §6), default null/absent. Used when the app renders the native ad with `triggered = true` (e.g. after a user action on the same screen) — SDK calls `resolvedUiConfig(triggered)`: `true` prefers `ui_config_triggered`, falling back to `ui_config`; `false` always uses `ui_config`. Null → triggered renders fall back to `ui_config`. NATIVE placements only. |
+| analytics event names | NEW 0.12.1 (telemetry, NOT a JSONC field). `screen_show` → `x_app_screen_show`, `screen_exit` → `x_app_screen_exit`. `trackScreenShow`/`trackScreenExit` API + bundle keys + screen-preload matching UNCHANGED. Downstream GA4/BQ dashboards on the old event names must migrate. No config-file impact. |
 
 ## Changes since 0.11.9
 
@@ -105,6 +114,9 @@ Admin rejects import if `id` not pre-registered or `package_name` mismatches the
   "cross_unit_reuse_enabled": true, // NEW 0.11.8. bool default true. Allow a placement to borrow a buffered fullscreen ad
                                     //   from a unit it does NOT reference (matched by AdFormat), last tier before live-load.
                                     //   Gated by late_reuse_enabled=true. Revenue stays with origin unit.
+  "firebase_ad_impression_enabled": true, // NEW 0.12.3. bool default true. Kill-switch: false suppresses the ad_impression
+                                    //   Firebase event ONLY (all other ad events still emit). Avoid GA4 totalAdRevenue
+                                    //   double-count when AdMob<->GA4 linking already feeds revenue server-side.
   "preload": {                      // optional sub-object
     "max_concurrent_loads": 3,      // int [1..8], default 3
     "init_delayed_after_ms": 3000,  // long [0..10000], default 3000
@@ -138,6 +150,9 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
                                   //   legacy "INIT"->INIT_DELAYED (WARN); unknown->INIT_DELAYED+WARN.
                                   //   SCREEN (NEW 0.12.0): no init preload; buffer fills on trackScreenShow() matching preload_on_screens. Mutually exclusive with INIT_*/LAZY.
   "auto_reload_on_show": true,    // bool, default true
+  "reload_after_show_delay_ms": 0,// NEW 0.12.3. long >= 0 (coerced), default 0 (=immediate). Delay before reload-after-show
+                                  //   buffer refill. Effective = max(this, fullscreen auto-delay from placement min_interval_sec).
+                                  //   Only meaningful when auto_reload_on_show=true. Admin caps 0..60000 (rejects > 60000).
   "reload_interval_sec": 0,       // int >= 0 (coerced). 0 = off. banner/native timer-refresh.
                                   //   COERCED to 0 if meta_mediation_enabled=true (Meta forbids auto-refresh)
   "max_reload_count": 0,          // int >= 0 (coerced). 0 = unlimited
@@ -205,6 +220,9 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
                                     //   reuse_before_load=OWN_BUFFER>REUSE>OWN_PENDING>OWN_LOAD; reuse_first=REUSE>OWN_BUFFER>OWN_PENDING>OWN_LOAD.
                                     //   SDK: case-insensitive, unknown->own_first silently. Admin z.enum strict -> unknown REJECTED.
   "ui_config": { ... },             // REQUIRED iff chain format == NATIVE. see §6
+  "ui_config_triggered": { ... },   // NEW 0.12.3. OPTIONAL second ui_config (SAME shape as ui_config). NATIVE only.
+                                    //   Used when host renders with triggered=true; SDK resolvedUiConfig(true) prefers this,
+                                    //   falls back to ui_config. null/absent = triggered renders reuse ui_config.
   "_metadata": {                    // admin/team docs. SDK ignores
     "description": "<1 sentence>", "screen_name": "<screen>", "trigger_event": "<EVENT>",
     "priority": "high",             // high | medium | low
@@ -220,6 +238,9 @@ Cross-rules enforced by the SDK parser:
 - `name` MUST equal key suffix — mismatch = placement skipped.
 
 ## 6. `ui_config` (NATIVE format only)
+
+`ui_config_triggered` (NEW 0.12.3, optional) uses the EXACT same shape below — it is just a second render variant the host selects via `triggered=true`.
+
 
 ```jsonc
 {
@@ -348,6 +369,9 @@ HARD ERRORS (admin will reject):
 37. `xapp_config.cross_unit_reuse_enabled` present AND not boolean.
 38. NEW 0.12.0: `ui_config.banner.height_dp` / `banner.padding_dp` present AND not an integer, or negative (`height_dp` coerced ≥1, `padding_dp` coerced ≥0; admin should reject non-int / negative). ABSENT = OK (defaults 125 / 12).
 39. NEW 0.12.0: `ui_config.ad_info.ad_icon.size_dp` present AND not an integer or < 1 (SDK coerces ≥1 when set; null = per-template default). ABSENT / null = OK.
+40. NEW 0.12.3: `xapp_ad_units[*].reload_after_show_delay_ms` present AND not an int / negative / **> 60000** (SDK coerces ≥0 with no upper cap; admin `z.number().int().min(0).max(60000)` REJECTS > 60000). ABSENT = OK (default 0).
+41. NEW 0.12.3: `xapp_config.firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean()`). ABSENT = OK (default true).
+42. NEW 0.12.3: `xapp_p_<name>.ui_config_triggered` present on a NON-native placement (only consumed for NATIVE renders) — admin/SDK ignore it for non-native; flag. Its inner shape is validated by the SAME `ui_config` rules (rules 19–26, 29–30, 38–39) — apply all of them to `ui_config_triggered` too.
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
