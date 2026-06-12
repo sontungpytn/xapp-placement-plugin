@@ -1,8 +1,12 @@
-# XAppAdKit JSONC Schema — SDK 0.12.3
+# XAppAdKit JSONC Schema — SDK 0.12.5
 
-Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.12.3` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
+Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.12.5` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
 
 File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadata.
+
+## Changes since 0.12.3
+
+**None — config schema is byte-identical to 0.12.3.** SDK 0.12.4 and 0.12.5 are native-renderer layout fixes only (CTA + AdChoices kept inside the ad box across all media sizes; banner box no longer jumps on first layout). `ConfigRepository` parser DTOs and every `@SerializedName` key are unchanged. All "NEW 0.12.3" markers below remain accurate as field-introduction history.
 
 ## Changes since 0.12.0
 
