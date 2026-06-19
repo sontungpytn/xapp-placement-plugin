@@ -1,8 +1,15 @@
-# XAppAdKit JSONC Schema — SDK 0.12.5
+# XAppAdKit JSONC Schema — SDK 0.12.7
 
-Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.12.5` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
+Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.12.7` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
 
 File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadata.
+
+## Changes since 0.12.5
+
+| Area | Change |
+|---|---|
+| `ui_config.collapse_arrow.targets` | NEW 0.12.6. Array of strings, default `["media"]`. `collapsible_v1` template ONLY. Which sections collapse when the arrow is tapped — subset of `{"media", "cta"}` (case-sensitive). Invalid tokens dropped + WARN; empty after filtering → default `["media"]`; absent → default `["media"]`. NOTE: the arrow lives inside the media section, so `"media"` in targets makes the arrow disappear with it (one-way collapse); `["cta"]` alone keeps the arrow visible. |
+| in-app RC defaults (0.12.7) | NOT a JSONC field. SDK 0.12.7 (`feat/rc-defaults-fast-splash`) adds `AppConfig.remoteConfigDefaults` + `ConfigRepository.applyDefaults()` — the host app passes Remote Config defaults at `init()` so first-run splash reads them without blocking on the network fetch. This is an SDK init-API change in app code, NOT a key in the `xapp_*` RC bundle — generator / validator / this schema are unaffected. |
 
 ## Changes since 0.12.3
 
@@ -267,7 +274,9 @@ Cross-rules enforced by the SDK parser:
     "icon_size": 16,                // int >=1, default 16
     "container_size": 20,           // int >=1, default 20
     "container_bg_color": "#00000000", // hex, default transparent
-    "container_shadow": false       // bool, default false
+    "container_shadow": false,      // bool, default false
+    "targets": ["media"]            // NEW 0.12.6. string[] subset of {"media","cta"}, default ["media"].
+                                    //   sections to collapse on arrow tap. invalid tokens dropped+WARN; empty->default.
   },
   "banner": {                       // NEW 0.12.0. banner_horizontal_v1 template ONLY (others ignore)
     "height_dp": 125,               // int default 125, coerced >=1. WARN when < 64 (clip risk).
@@ -376,6 +385,7 @@ HARD ERRORS (admin will reject):
 40. NEW 0.12.3: `xapp_ad_units[*].reload_after_show_delay_ms` present AND not an int / negative / **> 60000** (SDK coerces ≥0 with no upper cap; admin `z.number().int().min(0).max(60000)` REJECTS > 60000). ABSENT = OK (default 0).
 41. NEW 0.12.3: `xapp_config.firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean()`). ABSENT = OK (default true).
 42. NEW 0.12.3: `xapp_p_<name>.ui_config_triggered` present on a NON-native placement (only consumed for NATIVE renders) — admin/SDK ignore it for non-native; flag. Its inner shape is validated by the SAME `ui_config` rules (rules 19–26, 29–30, 38–39) — apply all of them to `ui_config_triggered` too.
+43. NEW 0.12.6: `ui_config.collapse_arrow.targets` present AND not an array of strings, OR contains a token outside `{"media", "cta"}` (SDK drops invalid tokens + WARN, empty → default `["media"]`; admin should reject non-subset). ABSENT = OK (default `["media"]`).
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
@@ -390,6 +400,7 @@ WARNINGS:
 - legacy `parallel_load` boolean present on `ad_chain` (migrate to `load_strategy`).
 - legacy `provider` field on placement or `meta_config` on an ADMOB unit (SDK drops silently — strip).
 - `collapse_arrow` present on a non-`collapsible_v1` template (SDK ignores).
+- NEW 0.12.6: `collapse_arrow.targets` contains tokens outside `{"media", "cta"}` — SDK drops the invalid entries + WARN (empty result → default `["media"]`).
 - `skip_delay_sec` set on a non-`fullscreen_hero_v1` template (SDK ignores for inline renderers).
 - NEW 0.11.8: placement `reuse_strategy` ≠ `own_first` (or `xapp_config.cross_unit_reuse_enabled: true`) while `xapp_config.late_reuse_enabled: false` — reuse tiers are disabled, so the strategy / cross-unit borrow is a no-op (gated by `late_reuse_enabled`).
 - NEW 0.11.8: `xapp_config.preload.vendor_dedupe` default is now `false` (was `true`) — same-`vendor_id` units load in parallel unless explicitly set `true`.

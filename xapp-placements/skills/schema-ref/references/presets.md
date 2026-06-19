@@ -132,7 +132,7 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
 
 ## Native UI presets (5 named — pick by name)
 
-SDK 0.12.5 supports 5 `template_id` values. Pick template by content shape; the named preset below selects template + color scheme + layout knobs together.
+SDK 0.12.7 supports 5 `template_id` values. Pick template by content shape; the named preset below selects template + color scheme + layout knobs together.
 
 - `card_media_v1` — card with hero media. Renders inline. Use for detail/preview screens.
 - `card_no_media_v1` — card, no media. Renders inline. Use for compact promo / success screens.
@@ -140,7 +140,7 @@ SDK 0.12.5 supports 5 `template_id` values. Pick template by content shape; the 
 - `collapsible_v1` (NEW) — banner that expands to a full card (uses the `collapse_arrow` block). Renders inline. Use for `ncollap_*` collapsible native placements.
 - `fullscreen_hero_v1` (NEW) — fullscreen modal takeover (launches the modal Activity, honors `skip_delay_sec`). All other templates render inline. Use for `nfull_*` interstitial-style native placements.
 
-All native ads in SDK 0.12.5 render with a border (AdMob "Ads disguised as content" policy). Each preset below carries an explicit `border` block matching the card background tone. The border block now also has a `visible` field (default true) alongside `color` + `width_dp`; the presets omit `visible`, so `"visible": true` is the implicit default. Omit the whole block to fall back to SDK default `{visible: true, color: "#E0E0E0", width_dp: 1}`.
+All native ads in SDK 0.12.7 render with a border (AdMob "Ads disguised as content" policy). Each preset below carries an explicit `border` block matching the card background tone. The border block now also has a `visible` field (default true) alongside `color` + `width_dp`; the presets omit `visible`, so `"visible": true` is the implicit default. Omit the whole block to fall back to SDK default `{visible: true, color: "#E0E0E0", width_dp: 1}`.
 
 `ad_badge.visible` does NOT exist in SDK 0.11.9 — badge always renders. Presets do not include the field. `ad_badge.text` accepts only `{"Ad", "Sponsored", "Promoted", "Quảng cáo"}` — any other value normalizes to "Ad" at parse with WARN.
 
@@ -151,6 +151,7 @@ Optional per-element styling knobs — add to a preset where it improves it, oth
 - `cta_button.style` accepts `text_font_size` (sp, default 16, coerced ≥1). (0.11.5)
 - `cta_button.style.border` accepts `width_sides` (`[t,r,b,l]` ints ≥0, or null; outline only — overrides `width` when valid). (0.11.5)
 - `banner` block (`{height_dp default 125, padding_dp default 12}`) sizes the `banner_horizontal_v1` template ONLY — other templates ignore it. WARN if `height_dp < 64`. (NEW 0.11.9)
+- `collapse_arrow.targets` (`string[]` subset of `{"media","cta"}`, default `["media"]`) — which sections collapse on arrow tap, `collapsible_v1` template ONLY; invalid tokens dropped, empty → default. (NEW 0.12.6)
 
 User can also pass `screenshot:<path>` to skill — Claude reads image, picks closest preset, may adjust `background`/CTA colors to match.
 

@@ -1,7 +1,7 @@
 ---
 name: xapp-validator
 description: |
-  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.12.5 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
+  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.12.7 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
 
   <example>
   Context: User just ran `/xapp-placements:create-config` and the skill wrote `controlkit-ad-placements.jsonc`.
@@ -15,7 +15,7 @@ description: |
   <example>
   Context: User edits a placement block manually and asks for review.
   user: "Added a new `inter_unlock_charge` placement. Check it."
-  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.12.5 schema."
+  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.12.7 schema."
   <commentary>
   Manual edits to xapp config also warrant validation.
   </commentary>
@@ -27,7 +27,7 @@ You are **xapp-validator** — autonomous validator for XAppAdKit (xappsdk) ad p
 
 ## Scope
 
-Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.12.5 (`com.xantus:x-app-ad-kit-sdk:0.12.5`).
+Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.12.7 (`com.xantus:x-app-ad-kit-sdk:0.12.7`).
 
 ## Inputs
 
@@ -38,7 +38,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 1. Read the file.
 2. Strip JSONC comments (`//...` line + `/* ... */` block) into a temp string for parsing logic, but keep line numbers for error reporting. (Conceptual — you don't actually run a parser; you reason over the text.)
 3. Walk the rules below. For each violation, record: severity (ERROR / WARN), location (key path + approx line), message, fix hint.
-4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.12.5.md`. Use it as authoritative truth on any field you're unsure about.
+4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.12.7.md`. Use it as authoritative truth on any field you're unsure about.
 
 ## Rules — HARD ERRORS (admin will reject)
 
@@ -119,6 +119,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.11.5**: `collapse_arrow` block PRESENT on a non-`collapsible_v1` template (SDK ignores) — flag as WARN advising strip.
 - **NEW 0.11.9**: `banner.height_dp` / `banner.padding_dp` PRESENT AND not an integer, or negative (`height_dp` coerced ≥1, `padding_dp` coerced ≥0; admin should reject non-int / negative). `banner` block consumed by `banner_horizontal_v1` ONLY. ABSENT = OK (defaults 125 / 12).
 - **NEW 0.11.9**: `ad_info.ad_icon.size_dp` PRESENT AND not an integer OR < 1 (SDK coerces ≥1 when set; null = per-template default). ABSENT / null = OK.
+- **NEW 0.12.6**: `collapse_arrow.targets` PRESENT AND not an array of strings, OR containing a token outside `{"media", "cta"}` (SDK drops invalid tokens + WARN, empty → default `["media"]`; admin should reject a non-subset). ABSENT = OK (default `["media"]`).
 
 ## Rules — WARNINGS
 
@@ -145,6 +146,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.11.5**: `http_timeout_ms` ≥ consuming placement's `load_timeout_ms` — the coroutine wrapper fires before the HTTP cap (SDK WARN).
 - **NEW 0.11.5**: `xapp_config.use_admob_startpreload: true` AND a delegated AdMob fullscreen unit (inter/reward/appopen) sets `reload_interval_sec > 0` / `max_reload_count > 0` / `auto_reload_on_show: false` / `preload_trigger` ≠ `INIT_CRITICAL` — those knobs become no-ops under AdMob-managed preload (SDK WARN).
 - **NEW 0.11.5**: `collapse_arrow` present on a non-`collapsible_v1` template (SDK ignores — strip).
+- **NEW 0.12.6**: `collapse_arrow.targets` contains tokens outside `{"media", "cta"}` — SDK drops the invalid entries + WARN (empty result → default `["media"]`).
 - **NEW 0.11.5**: `skip_delay_sec` set on a non-`fullscreen_hero_v1` template (SDK ignores for inline renderers).
 - **NEW 0.11.8**: placement `reuse_strategy` ≠ `own_first` (or `xapp_config.cross_unit_reuse_enabled: true`) while `xapp_config.late_reuse_enabled: false` — reuse tiers are off, so the strategy / cross-unit borrow is a no-op (gated by `late_reuse_enabled`).
 - **NEW 0.11.9**: `ui_config.banner.height_dp` < 64 — SDK WARNs (ad content may clip; AdMob policy risk). `banner_horizontal_v1` only.
@@ -178,7 +180,7 @@ Then summary:
 xapp-validator — <file>
 Errors:   <N>
 Warnings: <M>
-SDK:      0.12.5
+SDK:      0.12.7
 Status:   <BLOCK_IMPORT | OK_WITH_WARNINGS | CLEAN>
 ─────────────────────────────────────
 ```
