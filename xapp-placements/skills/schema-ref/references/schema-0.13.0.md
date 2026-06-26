@@ -1,8 +1,17 @@
-# XAppAdKit JSONC Schema — SDK 0.12.7
+# XAppAdKit JSONC Schema — SDK 0.13.0
 
-Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.12.7` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
+Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.13.0` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
 
 File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadata.
+
+## Changes since 0.12.7
+
+| Area | Change |
+|---|---|
+| `xapp_p_<name>.reuse_chain` | NEW 0.13.0. Optional object `{ "entries": [ { "ad_unit_id": "<id>" }, ... ] }`, default absent / `{entries:[]}`. Ordered allowlist of ad units this placement may BORROW a buffered ad from at the REUSE tier. Borrow walks `entries` in order and takes the first unit whose buffer holds a fresh ad of the SAME format as the placement (format from `ad_chain.entries[0]`). Empty / absent → NO cross-unit borrow (placement uses its own `ad_chain` only). Reuses the `ad_chain` entry shape; `floor_tag` / `load_strategy` are ignored for reuse. Admin schema: `reuseChainSchema = z.object({ entries: z.array(adChainEntrySchema).default([]) })`, optional on the placement. Unknown `ad_unit_id` dropped (same as `ad_chain`). |
+| `xapp_config.cross_unit_reuse_enabled` (semantics CHANGED 0.13.0) | Still a bool kill-switch (default true, gated by `late_reuse_enabled`). BUT borrow is now scoped to the placement's `reuse_chain` (list-order, format-matched) — the old "borrow from ANY unit not referenced, matched by AdFormat" behavior is REMOVED (`AdBufferRegistry.borrowOldestForFormat` → `borrowFromChain`). `false`, or an empty `reuse_chain`, → no cross-unit borrow. |
+| Cross-unit reuse coverage (CHANGED 0.13.0) | Reuse now applies to ALL formats, not fullscreen-only: fullscreen via `show()`, NATIVE inline via `loadNativeAd()`, BANNER inline via `loadBannerView()` (own-buffer → reuse → live-load). Borrowed inline ad renders under the recipient placement. No new config key beyond `reuse_chain`. |
+| Late-reuse for native/banner (NEW 0.13.0) | Late-arriving NATIVE / BANNER ads are now retained in the AdMob loader cache + buffered (previously destroyed), so they are reusable like fullscreen late ads. Still gated by `late_reuse_enabled`. SDK-internal (AdMob native/banner loaders + `PreloadManager.onLateReusable`) — no new config key. |
 
 ## Changes since 0.12.5
 
@@ -122,9 +131,10 @@ Admin rejects import if `id` not pre-registered or `package_name` mismatches the
   "mute_ad_video": false,           // NEW. bool default false. Process-wide AdMob video mute (one-way per session).
   "use_admob_startpreload": false,  // NEW. bool default false. Delegate AdMob fullscreen preload to MobileAds startPreload.
   "late_reuse_enabled": true,       // NEW. bool default true. Late-load buffer reuse kill-switch.
-  "cross_unit_reuse_enabled": true, // NEW 0.11.8. bool default true. Allow a placement to borrow a buffered fullscreen ad
-                                    //   from a unit it does NOT reference (matched by AdFormat), last tier before live-load.
-                                    //   Gated by late_reuse_enabled=true. Revenue stays with origin unit.
+  "cross_unit_reuse_enabled": true, // NEW 0.11.8 (semantics changed 0.13.0). bool default true. Kill-switch for cross-unit
+                                    //   reuse: a placement borrows a buffered ad ONLY from units listed in its reuse_chain
+                                    //   (list-order, same-format), at the REUSE tier. ALL formats. Empty reuse_chain = no
+                                    //   borrow. Gated by late_reuse_enabled=true. Revenue stays with origin unit.
   "firebase_ad_impression_enabled": true, // NEW 0.12.3. bool default true. Kill-switch: false suppresses the ad_impression
                                     //   Firebase event ONLY (all other ad events still emit). Avoid GA4 totalAdRevenue
                                     //   double-count when AdMob<->GA4 linking already feeds revenue server-side.
@@ -230,6 +240,11 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
                                     //   show() tier order: own_first=OWN_BUFFER>OWN_PENDING>REUSE>OWN_LOAD (current);
                                     //   reuse_before_load=OWN_BUFFER>REUSE>OWN_PENDING>OWN_LOAD; reuse_first=REUSE>OWN_BUFFER>OWN_PENDING>OWN_LOAD.
                                     //   SDK: case-insensitive, unknown->own_first silently. Admin z.enum strict -> unknown REJECTED.
+  "reuse_chain": {                  // NEW 0.13.0. OPTIONAL. ordered allowlist of ad units to BORROW from at the REUSE tier.
+    "entries": [
+      { "ad_unit_id": "<id>" }      // unit must exist in xapp_ad_units; borrow walks entries in order, same-format only.
+    ]
+  },                                //   empty/absent = no cross-unit borrow. floor_tag/load_strategy ignored for reuse.
   "ui_config": { ... },             // REQUIRED iff chain format == NATIVE. see §6
   "ui_config_triggered": { ... },   // NEW 0.12.3. OPTIONAL second ui_config (SAME shape as ui_config). NATIVE only.
                                     //   Used when host renders with triggered=true; SDK resolvedUiConfig(true) prefers this,
@@ -386,6 +401,8 @@ HARD ERRORS (admin will reject):
 41. NEW 0.12.3: `xapp_config.firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean()`). ABSENT = OK (default true).
 42. NEW 0.12.3: `xapp_p_<name>.ui_config_triggered` present on a NON-native placement (only consumed for NATIVE renders) — admin/SDK ignore it for non-native; flag. Its inner shape is validated by the SAME `ui_config` rules (rules 19–26, 29–30, 38–39) — apply all of them to `ui_config_triggered` too.
 43. NEW 0.12.6: `ui_config.collapse_arrow.targets` present AND not an array of strings, OR contains a token outside `{"media", "cta"}` (SDK drops invalid tokens + WARN, empty → default `["media"]`; admin should reject non-subset). ABSENT = OK (default `["media"]`).
+44. NEW 0.13.0: `xapp_p_<name>.reuse_chain` present AND not an object `{ entries: [...] }`, OR an `entries` item missing/blank `ad_unit_id` (admin `z.object({ entries: z.array(adChainEntrySchema).default([]) })`). Unknown `ad_unit_id` is dropped by the SDK (like `ad_chain`) — flag as WARN, not error. ABSENT / `{entries:[]}` = OK.
+45. NEW 0.13.0: `xapp_config.cross_unit_reuse_enabled` already covered by rule 37 (boolean) — no change.
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
@@ -403,6 +420,9 @@ WARNINGS:
 - NEW 0.12.6: `collapse_arrow.targets` contains tokens outside `{"media", "cta"}` — SDK drops the invalid entries + WARN (empty result → default `["media"]`).
 - `skip_delay_sec` set on a non-`fullscreen_hero_v1` template (SDK ignores for inline renderers).
 - NEW 0.11.8: placement `reuse_strategy` ≠ `own_first` (or `xapp_config.cross_unit_reuse_enabled: true`) while `xapp_config.late_reuse_enabled: false` — reuse tiers are disabled, so the strategy / cross-unit borrow is a no-op (gated by `late_reuse_enabled`).
+- NEW 0.13.0: `reuse_chain` entry references a unit whose `format` differs from the placement's format (from `ad_chain.entries[0]`) — borrow skips it at runtime (same-format only); likely a config mistake.
+- NEW 0.13.0: `reuse_chain` non-empty while `xapp_config.cross_unit_reuse_enabled: false` OR `late_reuse_enabled: false` — cross-unit borrow is disabled, so `reuse_chain` is a no-op.
+- NEW 0.13.0: `reuse_chain` references an `ad_unit_id` not in `xapp_ad_units` — SDK drops it (entry never borrowable); flag to fix or remove.
 - NEW 0.11.8: `xapp_config.preload.vendor_dedupe` default is now `false` (was `true`) — same-`vendor_id` units load in parallel unless explicitly set `true`.
 - NEW 0.12.0: `ui_config.banner.height_dp` < 64 — SDK WARNs (ad content may clip; AdMob policy risk). Only effective on the `banner_horizontal_v1` template.
 - NEW 0.12.0: `ui_config.banner` block present on a non-`banner_horizontal_v1` template — SDK ignores (other templates do not consume it) — strip.

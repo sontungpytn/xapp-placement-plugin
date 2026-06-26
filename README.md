@@ -2,7 +2,7 @@
 
 Standalone [Claude Code](https://docs.claude.com/en/docs/claude-code) marketplace shipping one plugin: **`xapp-placements`** — interactive generators + a proactive validator for Xantus **XAppAdKit (xappsdk)** ad-placement config files.
 
-Targets the Xantus admin import format and matches **SDK `com.xantus:x-app-ad-kit-sdk:0.12.7`** (plugin `v0.9.0`).
+Targets the Xantus admin import format and matches **SDK `com.xantus:x-app-ad-kit-sdk:0.13.0`** (plugin `v0.10.0`).
 
 Runs on **Claude Code** (CLI) and **Claude Cowork** (desktop app).
 
@@ -47,7 +47,7 @@ Other methods (local clone, manual cache, Cowork upload): see [INSTALL.md](INSTA
 | `/xapp-placements:add-placement` | Append 1 placement to an existing file. Auto-updates `xapp_registry`. Native template via named preset or screenshot input. |
 | `/xapp-placements:add-ad-unit` | Append 1 ad unit to the pool. Enforces id regex + vendor uniqueness. |
 | `/xapp-placements:validate` | Run the `xapp-validator` agent against a file. |
-| `/xapp-placements:schema-ref` | Print the canonical SDK 0.12.7 schema reference. |
+| `/xapp-placements:schema-ref` | Print the canonical SDK 0.13.0 schema reference. |
 
 **Agent `xapp-validator`** runs **proactively** after every config write — catches schema violations before they reach admin import.
 
@@ -57,14 +57,13 @@ Default file path: `./<app_code>-ad-placements.jsonc` (CWD). Customizable per sk
 
 ## SDK version
 
-Pinned to `com.xantus:x-app-ad-kit-sdk:0.12.7`. When the SDK schema changes, bump the plugin and re-sync the schema reference.
+Pinned to `com.xantus:x-app-ad-kit-sdk:0.13.0`. When the SDK schema changes, bump the plugin and re-sync the schema reference.
 
-Latest changes synced (`v0.9.0`, SDK 0.12.7):
-- `ui_config.collapse_arrow.targets` (NEW 0.12.6) — string[] subset of `{"media","cta"}`, default `["media"]`; which sections collapse on arrow tap (`collapsible_v1` only). Invalid tokens dropped; empty → default.
-- 0.12.7 in-app RC defaults (`AppConfig.remoteConfigDefaults` / `applyDefaults()`) — SDK init-API change, NOT a JSONC bundle key; no generator/validator/schema impact.
-- `xapp_ad_units[*].reload_after_show_delay_ms` — delay (ms) before the reload-after-show buffer refill (default 0; admin caps 0..60000).
-- `xapp_config.firebase_ad_impression_enabled` — kill-switch for the `ad_impression` Firebase event (default true; generator emits `false` to avoid GA4 `totalAdRevenue` double-count when AdMob↔GA4 linking is on).
-- `xapp_p_<name>.ui_config_triggered` — optional second native `ui_config` used when rendering with `triggered = true` (NATIVE only).
+Latest changes synced (`v0.10.0`, SDK 0.13.0):
+- `xapp_p_<name>.reuse_chain` (NEW 0.13.0) — optional ordered allowlist of ad units a placement may borrow a buffered ad from at the REUSE tier (same-format, list-order). `{ "entries": [ { "ad_unit_id": "<id>" }, ... ] }`. Empty/absent = no cross-unit borrow.
+- `xapp_config.cross_unit_reuse_enabled` semantics CHANGED 0.13.0 — borrow now scoped to `reuse_chain` (list-order, format-matched); old "borrow from ANY unref'd unit" behavior removed. Still a bool kill-switch (default true, gated by `late_reuse_enabled`).
+- Cross-unit reuse now covers ALL formats (fullscreen, NATIVE inline, BANNER inline) — was fullscreen-only.
+- Late-reuse for NATIVE/BANNER — late-arriving ads retained + buffered (SDK-internal, no new config key).
 - Telemetry (0.12.1, no config impact): `screen_show`/`screen_exit` → `x_app_screen_show`/`x_app_screen_exit`; always-on `ad_revenue` event added.
 
 Full per-version history: [xapp-placements/README.md](xapp-placements/README.md#changelog).

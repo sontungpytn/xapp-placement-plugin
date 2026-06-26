@@ -45,8 +45,8 @@ Restart Claude Code session.
 
 ```bash
 git clone git@github.com:sontungpytn/xapp-placement-plugin.git /tmp/xappsdk
-mkdir -p ~/.claude/plugins/cache/xappsdk/xapp-placements/0.9.0
-cp -R /tmp/xappsdk/xapp-placements/* ~/.claude/plugins/cache/xappsdk/xapp-placements/0.9.0/
+mkdir -p ~/.claude/plugins/cache/xappsdk/xapp-placements/0.10.0
+cp -R /tmp/xappsdk/xapp-placements/* ~/.claude/plugins/cache/xappsdk/xapp-placements/0.10.0/
 mkdir -p ~/.claude/plugins/marketplaces/xappsdk/.claude-plugin
 cp /tmp/xappsdk/.claude-plugin/marketplace.json ~/.claude/plugins/marketplaces/xappsdk/.claude-plugin/
 ```
@@ -69,8 +69,8 @@ Drag-drop the cloned repo dir into Cowork's plugin upload UI. Cowork registers i
 - `/xapp-placements:create-config` — interactive wizard, scaffold full ad-placement JSONC
 - `/xapp-placements:add-placement` — append placement to existing file
 - `/xapp-placements:add-ad-unit` — append ad unit to pool
-- `/xapp-placements:validate` — validate file against SDK 0.12.7 schema
+- `/xapp-placements:validate` — validate file against SDK 0.13.0 schema
 - `/xapp-placements:schema-ref` — print canonical schema reference
 - Agent `xapp-validator` — proactively runs after every config write
 
-SDK pinned: `com.xantus:x-app-ad-kit-sdk:0.12.7`.
+SDK pinned: `com.xantus:x-app-ad-kit-sdk:0.13.0`.

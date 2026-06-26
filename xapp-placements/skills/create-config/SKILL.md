@@ -10,7 +10,7 @@ You are scaffolding a new XAppAdKit JSONC config file. The user is a Xantus dev 
 
 ## Step 0 — Load schema reference
 
-Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.12.7.md` and `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/presets.md` into your context. You will need them throughout.
+Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.13.0.md` and `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/presets.md` into your context. You will need them throughout.
 
 ## Step 1 — Collect project metadata
 
@@ -68,7 +68,7 @@ f. If format == `native` → run **native UI sub-flow**:
    - If screenshot path → Use Read tool on image. Use signals from `presets.md` "Screenshot → preset classifier hints" table to pick best preset. Optionally adjust `background` + CTA `colors` to roughly match dominant accent. Tell user which preset matched.
    - Defer fine-grained tuning (badge text, body color, star_rating visibility) — user adjusts in admin UI later.
 
-g. Build `ad_chain` with `load_strategy` (default `"waterfall"`; allow `"parallel_first"` / `"parallel_auction"` if user requests). Do NOT emit the legacy boolean `parallel_load`. Optionally set placement-level `reuse_strategy` (0.11.8: `own_first` default | `reuse_before_load` | `reuse_first`) — omit unless the user wants to favor reusing a ready ad. Confirm placement block with user (show generated JSONC for this placement). Append to working memory.
+g. Build `ad_chain` with `load_strategy` (default `"waterfall"`; allow `"parallel_first"` / `"parallel_auction"` if user requests). Do NOT emit the legacy boolean `parallel_load`. Optionally set placement-level `reuse_strategy` (0.11.8: `own_first` default | `reuse_before_load` | `reuse_first`) — omit unless the user wants to favor reusing a ready ad. Optionally set placement-level `reuse_chain` (NEW 0.13.0: optional object `{ "entries": [ { "ad_unit_id": "<id>" } ] }`) — omit unless the user wants to specify an ordered allowlist of units to borrow from at the REUSE tier (same-format only; empty/absent = no cross-unit borrow). Confirm placement block with user (show generated JSONC for this placement). Append to working memory.
 
 h. Ask "Add another placement? (yes / done)".
 
@@ -79,7 +79,7 @@ h. Ask "Add another placement? (yes / done)".
 ## Step 6 — Assemble + write
 
 Build full JSONC structure in this exact order:
-1. Top JSONC header comment (3-4 lines: project name, SDK version 0.12.7, generated date, generator = `xapp-placements plugin`).
+1. Top JSONC header comment (3-4 lines: project name, SDK version 0.13.0, generated date, generator = `xapp-placements plugin`).
 2. `_project` block.
 3. `xapp_config` block (use preset from presets.md; `debug_mode: true` if firebase_project_id contains `-dev`, else `false`). Include the globals with their defaults: `splash_min_duration_ms: 1000`, `mute_ad_video: false`, `use_admob_startpreload: false`, `late_reuse_enabled: true`, `cross_unit_reuse_enabled: true` (NEW 0.11.8), `firebase_ad_impression_enabled: false` (NEW 0.12.3 — generator emits false; SDK/admin schema default is true. Xantus default: AdMob↔GA4 linking pushes ad revenue server-side, so the client-side `ad_impression` event is OFF to avoid GA4 `totalAdRevenue` double-count. Flip to true only if a project lacks the AdMob↔GA4 link), and under `preload`: `vendor_dedupe: false` (default changed to false in 0.11.8), `circuit_threshold: 3`, `circuit_backoff_sec: 60` (value in SECONDS). Allow user overrides but do not block on them.
 4. `xapp_ad_units` array.

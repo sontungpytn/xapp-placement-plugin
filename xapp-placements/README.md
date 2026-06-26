@@ -1,6 +1,6 @@
 # xapp-placements
 
-Fast generator for XAppAdKit (xappsdk) ad placement config JSONC files. Output matches Xantus admin import format + SDK 0.12.7 schema.
+Fast generator for XAppAdKit (xappsdk) ad placement config JSONC files. Output matches Xantus admin import format + SDK 0.13.0 schema.
 
 ## Install
 
@@ -19,16 +19,17 @@ Restart session, verify `/help` shows `/xapp-placements:*` skills. Other methods
 - `/xapp-placements:add-placement` — append 1 placement to existing JSONC. Auto-update `xapp_registry`. Native templates via named preset OR screenshot input.
 - `/xapp-placements:add-ad-unit` — append 1 ad unit to pool. Enforce id regex + vendor uniqueness.
 - `/xapp-placements:validate` — invoke `xapp-validator` agent on a file.
-- `/xapp-placements:schema-ref` — print canonical SDK 0.12.7 schema reference.
+- `/xapp-placements:schema-ref` — print canonical SDK 0.13.0 schema reference.
 
 Validator agent (`xapp-validator`) runs **proactively** after every config write — catches schema violations before they hit admin import.
 
 ## SDK version
 
-Pinned to `com.xantus:x-app-ad-kit-sdk:0.12.7`. Bump plugin when SDK schema changes.
+Pinned to `com.xantus:x-app-ad-kit-sdk:0.13.0`. Bump plugin when SDK schema changes.
 
 ## Changelog
 
+- **0.10.0** (2026-06-26): Sync to SDK 0.13.0. New placement field `reuse_chain` — optional ordered allowlist of ad units to borrow from at the REUSE tier (same-format, list-order walk). `cross_unit_reuse_enabled` semantics changed: borrow now scoped to `reuse_chain` (old "borrow from ANY unref'd unit" removed). Cross-unit reuse now covers ALL formats (fullscreen, NATIVE inline via `loadNativeAd()`, BANNER inline via `loadBannerView()`). Late-reuse for NATIVE/BANNER (SDK-internal, no new config key).
 - **0.9.0** (2026-06-19): Sync to SDK 0.12.7. New `ui_config.collapse_arrow.targets` (NEW 0.12.6) — string[] subset of `{"media","cta"}`, default `["media"]`; selects which sections collapse on arrow tap, `collapsible_v1` template only. Invalid tokens dropped + WARN; empty after filter → default. SDK 0.12.7 (`feat/rc-defaults-fast-splash`) adds in-app RC defaults (`AppConfig.remoteConfigDefaults` / `ConfigRepository.applyDefaults()`) — an SDK init-API change in app code, NOT a key in the `xapp_*` RC bundle, so generator / validator / schema reference are unaffected. Schema reference doc renamed `schema-0.12.5.md` → `schema-0.12.7.md`.
 - **0.8.2** (2026-06-12): Re-pin to SDK 0.12.5. **No config-schema change** — SDK 0.12.4/0.12.5 are native-renderer layout fixes only (`ConfigRepository` parser DTOs byte-identical to 0.12.3): CTA + AdChoices stay inside the ad box across all media sizes, banner box no longer jumps on first layout. Generator output unchanged; schema reference doc renamed `schema-0.12.3.md` → `schema-0.12.5.md`.
 - **0.8.1** (2026-06-11): Generator now emits `xapp_config.firebase_ad_impression_enabled: false` (was true). Xantus default — AdMob↔GA4 linking pushes ad revenue server-side, so the client-side `ad_impression` event is off to avoid GA4 `totalAdRevenue` double-count. SDK/admin schema default stays true; flip to true only for projects lacking the AdMob↔GA4 link.
