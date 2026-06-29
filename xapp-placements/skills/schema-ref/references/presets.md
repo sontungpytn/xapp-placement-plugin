@@ -84,6 +84,7 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
   "late_reuse_enabled": true,
   "cross_unit_reuse_enabled": true,
   "firebase_ad_impression_enabled": false,
+  "adapter_init_timeout_ms": 0,
   "preload": {
     "max_concurrent_loads": 3,
     "init_delayed_after_ms": 3000,
@@ -112,6 +113,8 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
 `cross_unit_reuse_enabled` (NEW 0.11.8): bool, default true. When true (AND `late_reuse_enabled` also true), a buffered fullscreen ad in one unit may be borrowed by a placement that does NOT reference that unit, matched by AdFormat — last tier before live-load. Revenue stays with the origin unit.
 
 `firebase_ad_impression_enabled` (NEW 0.12.3): bool. **SDK/admin schema default true; generator emits `false`.** When false, the SDK suppresses ONLY the `ad_impression` Firebase event (all other ad events still fire) — Xantus default is to let AdMob↔GA4 linking push ad revenue server-side, so the SDK-side event is off to avoid double-counting GA4 `totalAdRevenue`. Set true only if a project needs the client-side `ad_impression` event (e.g. no AdMob↔GA4 link).
+
+`adapter_init_timeout_ms` (NEW post-0.13.0): int ms, default `0`, coerced `[0, 30000]`. Max wait for `MobileAds.initialize` (all adapters) before the first ad request. `0` = wait fully (prior behavior); `>0` = request ads after the timeout while adapters finish in the background. Generator emits `0`. Admin schema: `z.number().int().min(0).max(30000).default(0)`. SDK `GlobalConfig.adapterInitTimeoutMs`.
 
 `preload.vendor_dedupe` (DEFAULT CHANGED 0.11.8 → false, was true): when true, units sharing a `vendor_id` load sequentially (spaced by `vendor_dedupe_spacing_ms`); when false they load in parallel. Default now false.
 

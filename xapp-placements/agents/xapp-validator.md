@@ -61,6 +61,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.11.8**: `cross_unit_reuse_enabled` present AND not boolean (default true). Allows a placement to borrow a buffered fullscreen ad from a unit it does not reference (matched by AdFormat); gated by `late_reuse_enabled=true`.
 - **NOTE 0.11.8**: `preload.vendor_dedupe` default is now `false` (was `true`). Not an error in any case — informational when the field is absent.
 - **NEW 0.12.3**: `firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean().default(true)`). ABSENT = OK (SDK/admin schema default true). NOTE: generator emits `false` by Xantus convention (AdMob↔GA4 server-side revenue) — `false` is expected, only a type mismatch is an error.
+- **NEW (post-0.13.0)**: `adapter_init_timeout_ms` present AND not an integer, or outside [0, 30000] (admin `z.number().int().min(0).max(30000).default(0)`; SDK coerces). ABSENT = OK (default 0). Generator emits `0` (wait fully = prior behavior) — `0` is expected, not an error.
 
 ### `xapp_ad_units` (each entry)
 - `id` missing OR fails regex `^[a-z][a-z0-9_]*$`.
