@@ -12,7 +12,7 @@ File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadat
 | `xapp_config.cross_unit_reuse_enabled` (semantics CHANGED 0.13.0) | Still a bool kill-switch (default true, gated by `late_reuse_enabled`). BUT borrow is now scoped to the placement's `reuse_chain` (list-order, format-matched) — the old "borrow from ANY unit not referenced, matched by AdFormat" behavior is REMOVED (`AdBufferRegistry.borrowOldestForFormat` → `borrowFromChain`). `false`, or an empty `reuse_chain`, → no cross-unit borrow. |
 | Cross-unit reuse coverage (CHANGED 0.13.0) | Reuse now applies to ALL formats, not fullscreen-only: fullscreen via `show()`, NATIVE inline via `loadNativeAd()`, BANNER inline via `loadBannerView()` (own-buffer → reuse → live-load). Borrowed inline ad renders under the recipient placement. No new config key beyond `reuse_chain`. |
 | Late-reuse for native/banner (NEW 0.13.0) | Late-arriving NATIVE / BANNER ads are now retained in the AdMob loader cache + buffered (previously destroyed), so they are reusable like fullscreen late ads. Still gated by `late_reuse_enabled`. SDK-internal (AdMob native/banner loaders + `PreloadManager.onLateReusable`) — no new config key. |
-| adapter init timeout (SDK init-API, post-0.13.0) | NOT a JSONC field. `feat/adapter-init-timeout` adds `AppConfig.adapterInitTimeoutMs` (Long, default 0) — the host app caps how long `MobileAds.initialize` is awaited before the first ad request; `>0` proceeds to request ads after the timeout while adapters finish in the background. An SDK init-API change in app code, NOT a key in the `xapp_*` RC bundle — generator / validator / this schema are unaffected. |
+| `xapp_config.adapter_init_timeout_ms` (NEW, post-0.13.0) | Integer ms, default `0`, coerced `[0, 30000]`. Max wait for `MobileAds.initialize` (all adapters) before the first ad request. `0` = wait fully (prior behavior). `>0` = request ads after the timeout while adapters finish in the background. Admin schema: `z.number().int().min(0).max(30000).default(0)`. SDK `GlobalConfig.adapterInitTimeoutMs`. |
 
 ## Changes since 0.12.5
 
@@ -139,6 +139,9 @@ Admin rejects import if `id` not pre-registered or `package_name` mismatches the
   "firebase_ad_impression_enabled": true, // NEW 0.12.3. bool default true. Kill-switch: false suppresses the ad_impression
                                     //   Firebase event ONLY (all other ad events still emit). Avoid GA4 totalAdRevenue
                                     //   double-count when AdMob<->GA4 linking already feeds revenue server-side.
+  "adapter_init_timeout_ms": 0,     // NEW post-0.13.0. int ms default 0, coerced [0,30000]. Max wait for MobileAds.initialize
+                                    //   (all adapters) before first ad request. 0 = wait fully (prior behavior); >0 = request
+                                    //   ads after timeout while adapters finish in background. SDK GlobalConfig.adapterInitTimeoutMs.
   "preload": {                      // optional sub-object
     "max_concurrent_loads": 3,      // int [1..8], default 3
     "init_delayed_after_ms": 3000,  // long [0..10000], default 3000
@@ -404,6 +407,7 @@ HARD ERRORS (admin will reject):
 43. NEW 0.12.6: `ui_config.collapse_arrow.targets` present AND not an array of strings, OR contains a token outside `{"media", "cta"}` (SDK drops invalid tokens + WARN, empty → default `["media"]`; admin should reject non-subset). ABSENT = OK (default `["media"]`).
 44. NEW 0.13.0: `xapp_p_<name>.reuse_chain` present AND not an object `{ entries: [...] }`, OR an `entries` item missing/blank `ad_unit_id` (admin `z.object({ entries: z.array(adChainEntrySchema).default([]) })`). Unknown `ad_unit_id` is dropped by the SDK (like `ad_chain`) — flag as WARN, not error. ABSENT / `{entries:[]}` = OK.
 45. NEW 0.13.0: `xapp_config.cross_unit_reuse_enabled` already covered by rule 37 (boolean) — no change.
+46. NEW post-0.13.0: `xapp_config.adapter_init_timeout_ms` present AND not an integer, or outside [0, 30000] (admin `z.number().int().min(0).max(30000).default(0)`; SDK coerces). ABSENT = OK (default 0). Generator emits `0` (wait fully = prior behavior) — `0` is expected, not an error.
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
