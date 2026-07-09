@@ -174,6 +174,13 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
   "preload_trigger": "INIT_DELAYED", // enum INIT_CRITICAL | INIT_DELAYED | LAZY | SCREEN. DEFAULT INIT_DELAYED.
                                   //   legacy "INIT"->INIT_DELAYED (WARN); unknown->INIT_DELAYED+WARN.
                                   //   SCREEN (NEW 0.12.0): no init preload; buffer fills on trackScreenShow() matching preload_on_screens. Mutually exclusive with INIT_*/LAZY.
+  "preload_trigger_by_segment": {  // NEW (SDK 0.15.0). optional. map<segment, trigger enum>.
+                                  //   e.g. "return_user": "INIT_CRITICAL", "new_user": "INIT_DELAYED"
+                                  //   Effective trigger at bootstrap = preload_trigger_by_segment[userSegment] ?? preload_trigger.
+                                  //   Values use the same enum + legacy/unknown coercion as preload_trigger above. Blank keys dropped.
+                                  //   Absent/empty = no override (default). Lets one unit (one vendor_id) preload eager for some
+                                  //   segments and lazy for others. No-op for units delegated under use_admob_startpreload.
+  },
   "auto_reload_on_show": true,    // bool, default true
   "reload_after_show_delay_ms": 0,// NEW 0.12.3. long >= 0 (coerced), default 0 (=immediate). Delay before reload-after-show
                                   //   buffer refill. Effective = max(this, fullscreen auto-delay from placement min_interval_sec).
@@ -408,6 +415,7 @@ HARD ERRORS (admin will reject):
 44. NEW 0.13.0: `xapp_p_<name>.reuse_chain` present AND not an object `{ entries: [...] }`, OR an `entries` item missing/blank `ad_unit_id` (admin `z.object({ entries: z.array(adChainEntrySchema).default([]) })`). Unknown `ad_unit_id` is dropped by the SDK (like `ad_chain`) — flag as WARN, not error. ABSENT / `{entries:[]}` = OK.
 45. NEW 0.13.0: `xapp_config.cross_unit_reuse_enabled` already covered by rule 37 (boolean) — no change.
 46. NEW post-0.13.0: `xapp_config.adapter_init_timeout_ms` present AND not an integer, or outside [0, 30000] (admin `z.number().int().min(0).max(30000).default(0)`; SDK coerces). ABSENT = OK (default 0). Generator emits `0` (wait fully = prior behavior) — `0` is expected, not an error.
+47. NEW (SDK 0.15.0): `xapp_ad_units[*].preload_trigger_by_segment` present AND (a) any key blank/empty (SDK drops blank keys with WARN; admin `z.record(z.string().min(1), preloadTriggerEnum)` rejects), or (b) any value not a valid trigger after alias resolution — same enum + legacy/unknown coercion as `preload_trigger` (rule 8): legacy `"INIT"` → `INIT_DELAYED` + WARN; unknown → `INIT_DELAYED` + WARN in the SDK; admin `z.enum` rejects the raw unknown on import. ABSENT / `{}` = OK (no override; effective trigger = `preload_trigger`).
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
@@ -418,6 +426,7 @@ WARNINGS:
 - `meta_mediation_enabled: true` AND `reload_interval_sec > 0` (SDK auto-coerces to 0 + WARN — file should reflect the coerced value).
 - ad_badge `text` not in whitelist (SDK normalizes to "Ad" + WARN).
 - `use_admob_startpreload: true` AND a delegated AdMob fullscreen unit sets `reload_interval_sec > 0` / `max_reload_count > 0` / `auto_reload_on_show: false` / `preload_trigger` ≠ INIT_CRITICAL (those knobs become no-ops — SDK WARN).
+- NEW (SDK 0.15.0): `use_admob_startpreload: true` AND a delegatable fullscreen unit (`mediation: ADMOB`, `format` inter/reward/appopen) carries a non-empty `preload_trigger_by_segment` — the per-segment override is a no-op under AdMob-managed preload, same as `preload_trigger` ≠ `INIT_CRITICAL` (SDK/admin WARN).
 - `http_timeout_ms` ≥ consuming placement's `load_timeout_ms` (coroutine wrapper fires before HTTP cap — SDK WARN).
 - legacy `parallel_load` boolean present on `ad_chain` (migrate to `load_strategy`).
 - legacy `provider` field on placement or `meta_config` on an ADMOB unit (SDK drops silently — strip).
