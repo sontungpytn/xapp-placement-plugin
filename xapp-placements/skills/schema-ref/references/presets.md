@@ -8,7 +8,7 @@ NOTE 0.11.5: banner/native ad_units whose AdMob mediation chain in AdMob console
 
 NOTE on mediation: the enum is `ADMOB | MAX | IRONSOURCE | META`, but only `ADMOB` is active at runtime; `MAX`/`IRONSOURCE`/`META` are reserved (META additionally needs a `meta_config` object or the unit is skipped). Keep generating/recommending `ADMOB`.
 
-Optional new ad_unit knobs (0.11.5): `http_timeout_ms` (int 5000–30000 or null; null default; AdMob `setHttpTimeoutMillis`; must be < the consuming placement's `load_timeout_ms`) and `media_aspect_ratio` (NATIVE units only: `any|landscape|portrait|square`, default null). The starter preset omits both (null defaults).
+Optional new ad_unit knobs (0.11.5): `http_timeout_ms` (int 5000–30000 or null; null default; AdMob `setHttpTimeoutMillis`; must be < the consuming placement's `load_timeout_ms`) and `media_aspect_ratio` (NATIVE units only: `any|landscape|portrait|square`, default null). The starter preset omits both (null defaults). New 0.16.0: `load_timeout_ms` (int 1000–60000 or null; per-unit coroutine load timeout — overrides placement `load_timeout_ms` per entry and the 10s preload default; parallel chain ceiling stays the placement's).
 
 ```jsonc
 [

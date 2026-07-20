@@ -77,6 +77,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - `reload_interval_sec < 0` OR `max_reload_count < 0`.
 - `meta_mediation_enabled=true` AND `format` not in `{banner, native}` — Meta auto-refresh policy only relevant for banner/native; on other formats this flag is meaningless. HARD ERROR.
 - **NEW 0.11.5**: `http_timeout_ms` present AND outside 5000–30000 (SDK clamps to null + WARN; admin should reject out-of-range). Cross-check: WARN if `http_timeout_ms ≥` consuming placement's `load_timeout_ms` (the coroutine wrapper fires before the HTTP cap).
+- **NEW 0.16.0**: `load_timeout_ms` present AND (not an int OR outside 1000–60000) — SDK clamps to null + WARN; admin `z.number().int().min(1000).max(60000)` REJECTS on import. ABSENT/null = OK (inherits placement timing on show-path, 10s on preload).
 - **NEW 0.11.5**: `media_aspect_ratio` not in `{any, landscape, portrait, square}` (case-insensitive; SDK → null + WARN); also flag when set on a non-native unit (native-only field).
 
 ### `xapp_registry`
@@ -147,6 +148,8 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - ad_unit `meta_mediation_enabled=true` AND `reload_interval_sec > 0` — SDK auto-coerces to 0 with WARN at parse. File should be updated to reflect coerced value.
 - **NEW 0.11.5**: legacy `parallel_load` boolean present on `ad_chain` — migrate to `load_strategy` (`true`→`parallel_auction`, `false`/absent→`waterfall`).
 - **NEW 0.11.5**: `http_timeout_ms` ≥ consuming placement's `load_timeout_ms` — the coroutine wrapper fires before the HTTP cap (SDK WARN).
+- **NEW 0.16.0**: `http_timeout_ms ≥` the unit's **effective** load timeout (`load_timeout_ms` override when set, else consuming placement's `load_timeout_ms`) — coroutine wrapper fires before the HTTP cap (SDK WARN).
+- **NEW 0.16.0**: unit `load_timeout_ms >` a consuming placement's `load_timeout_ms` where that placement's `ad_chain.load_strategy` is `parallel_first`/`parallel_auction` — the chain ceiling cuts it at show-time (no-op above the ceiling).
 - **NEW 0.11.5**: `xapp_config.use_admob_startpreload: true` AND a delegated AdMob fullscreen unit (inter/reward/appopen) sets `reload_interval_sec > 0` / `max_reload_count > 0` / `auto_reload_on_show: false` / `preload_trigger` ≠ `INIT_CRITICAL` — those knobs become no-ops under AdMob-managed preload (SDK WARN).
 - **NEW (SDK 0.15.0)**: `xapp_config.use_admob_startpreload: true` AND a delegatable fullscreen unit (`mediation: ADMOB`, `format` inter/reward/appopen) carries a non-empty `preload_trigger_by_segment` — the per-segment override is a no-op under AdMob-managed preload, same as `preload_trigger` ≠ `INIT_CRITICAL` (SDK WARN).
 - **NEW 0.11.5**: `collapse_arrow` present on a non-`collapsible_v1` template (SDK ignores — strip).
