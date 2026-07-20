@@ -35,6 +35,7 @@ Ask user (`AskUserQuestion`):
 - `floor_tag` — `h|m|l|nofloor`, default `nofloor`.
 - `enabled` — boolean, default true.
 - `http_timeout_ms` — int 5000–30000 or null (default null; omit when not set). Ask only if user wants an AdMob HTTP request cap. Warn-cross-check: must be `<` the consuming placement's `load_timeout_ms` (else SDK WARN — the coroutine wrapper fires before the HTTP cap).
+- `load_timeout_ms` — int 1000–60000 or null (default null; omit when not set; SDK 0.16.0+). Per-unit coroutine load timeout: wins over the consuming placement's `load_timeout_ms` (show-path) and the 10s preload default. Warn-cross-checks: `http_timeout_ms` must be `<` this value when both set; value above a parallel placement's `load_timeout_ms` gets cut by the chain ceiling.
 - `media_aspect_ratio` — native units ONLY. `any | landscape | portrait | square` (case-insensitive) or null (default null; omit when not set). Ask only when format is `native` and the user wants to constrain media aspect.
 
 NOTE: `meta_config` is only read when `mediation: "META"` (not active at runtime). Do NOT generate it for ADMOB units.
@@ -50,7 +51,7 @@ Use for `_meta.createdBy / updatedBy / createdAt / updatedAt`.
 
 ## Step 4 — Construct ad_unit block
 
-Field order: `id, vendor_id, mediation, format, floor_tag, enabled, buffer_size, preload_trigger, preload_on_screens, auto_reload_on_show, reload_after_show_delay_ms, reload_interval_sec, max_reload_count, http_timeout_ms, media_aspect_ratio, _meta`. Omit `preload_on_screens` when `preload_trigger` ≠ `SCREEN`. Omit `reload_after_show_delay_ms` when 0 (default). Omit `http_timeout_ms` / `media_aspect_ratio` when unset (default null).
+Field order: `id, vendor_id, mediation, format, floor_tag, enabled, buffer_size, preload_trigger, preload_on_screens, auto_reload_on_show, reload_after_show_delay_ms, reload_interval_sec, max_reload_count, load_timeout_ms, http_timeout_ms, media_aspect_ratio, _meta`. Omit `preload_on_screens` when `preload_trigger` ≠ `SCREEN`. Omit `reload_after_show_delay_ms` when 0 (default). Omit `http_timeout_ms` / `media_aspect_ratio` when unset (default null). Omit `load_timeout_ms` when unset (default null).
 
 Show user assembled block. Confirm.
 

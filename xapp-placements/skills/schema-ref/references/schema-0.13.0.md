@@ -70,6 +70,7 @@ File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadat
 | `xapp_config.preload.circuit_threshold` | NEW. Int coerced ≥1, default 3. Consecutive NO_FILL count that trips the per-unit circuit breaker. |
 | `xapp_config.preload.circuit_backoff_sec` | NEW. Int coerced ≥1, default 60. **JSON key is in SECONDS** (SDK stores internally as ms = sec×1000). How long the breaker stays open before retry. |
 | `xapp_ad_units[*].http_timeout_ms` | NEW. Int, default null. Range 5000–30000; out-of-range → clamped to null + WARN. AdMob `AdRequest.setHttpTimeoutMillis`. Cross-checked: WARN if `http_timeout_ms ≥` consuming placement's `load_timeout_ms`. |
+| `xapp_ad_units[*].load_timeout_ms` | **NEW 0.16.0.** Int, default null. Range 1000–60000; out-of-range → clamped to null + WARN. Coroutine-level load timeout for THIS unit: overrides the consuming placement's `load_timeout_ms` per chain entry (show-path) and the fixed 10s preload timeout. Parallel chains: the chain ceiling stays the placement's `load_timeout_ms`. Cross-checks: WARN if `http_timeout_ms ≥` the unit's effective load timeout; WARN if the override exceeds a parallel placement's ceiling. |
 | `xapp_ad_units[*].media_aspect_ratio` | NEW. String, default null. Native only. One of `any` / `landscape` / `portrait` / `square` (case-insensitive). Invalid → null + WARN. |
 | `xapp_ad_units[*].mediation` | Enum now `ADMOB` / `MAX` / `IRONSOURCE` / `META`. **Only `ADMOB` is active at runtime**; MAX/IRONSOURCE/META are reserved. `META` requires a `meta_config` object or the unit is skipped. Keep generating `ADMOB`. |
 | `ad_chain.load_strategy` | NEW. `waterfall` (default) / `parallel_first` / `parallel_auction`. Replaces the boolean `parallel_load` (still accepted as legacy: `true`→`parallel_auction`, `false`/absent→`waterfall`). Emit `load_strategy`, not `parallel_load`. |
@@ -191,6 +192,7 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
   "meta_mediation_enabled": false,// bool default false. true ONLY when AdMob chain includes Meta Audience Network. banner/native only.
   "http_timeout_ms": null,        // NEW. int or null (default null). range 5000-30000; out-of-range -> null + WARN.
                                   //   Must be < consuming placement's load_timeout_ms (cross-check WARN).
+  "load_timeout_ms": null,        // NEW 0.16.0. int or null (default null). range 1000-60000; out-of-range -> null + WARN. per-unit coroutine load timeout (preload + show-path entry).
   "media_aspect_ratio": null,     // NEW. string or null (default null). NATIVE only. any|landscape|portrait|square|auto (case-insensitive, NEW 0.12.0: +auto).
                                   //   "auto" = wrap media to creative's natural size.
   "preload_on_screens": [         // NEW 0.12.0. Only honored when preload_trigger == "SCREEN".
