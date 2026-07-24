@@ -1,6 +1,6 @@
 ---
 name: add-ad-unit
-description: Append a single ad unit to the `xapp_ad_units` pool of an existing XAppAdKit JSONC config. Enforces id regex, vendor_id uniqueness, mediation enum (ADMOB active at runtime; SDK 0.13.0), format enum. Auto-fills `_meta` from git config user.email + current UTC timestamp. Invokes `xapp-validator` after write. Use when user says "add ad unit", "thêm ad unit", "add new vendor unit", "add admob unit to config".
+description: Append a single ad unit to the `xapp_ad_units` pool of an existing XAppAdKit JSONC config. Enforces id regex, vendor_id uniqueness, mediation enum (ADMOB active at runtime; SDK 0.16.7), format enum. Auto-fills `_meta` from git config user.email + current UTC timestamp. Invokes `xapp-validator` after write. Use when user says "add ad unit", "thêm ad unit", "add new vendor unit", "add admob unit to config".
 argument-hint: [path-to-jsonc-file]
 ---
 
@@ -14,7 +14,7 @@ Same as `add-placement` Step 0.
 
 ## Step 1 — Load + parse pool
 
-Read file. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.13.0.md`.
+Read file. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.16.7.md`.
 
 Extract existing ad_unit `id`s + `vendor_id`s from the `xapp_ad_units` array (text scan OK).
 

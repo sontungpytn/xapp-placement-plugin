@@ -1,8 +1,21 @@
-# XAppAdKit JSONC Schema — SDK 0.13.0
+# XAppAdKit JSONC Schema — SDK 0.16.7
 
-Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.13.0` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
+Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.16.7` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
 
 File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadata.
+
+## Changes since 0.13.0 (→ 0.16.7)
+
+| Area | Change |
+|---|---|
+| `template_id` (5 → 7 templates) | NEW 0.16.x. Enum gains `full_height_v1` + `card_compact_v1` — now `card_media_v1 \| card_no_media_v1 \| banner_horizontal_v1 \| collapsible_v1 \| fullscreen_hero_v1 \| full_height_v1 \| card_compact_v1` (default `card_media_v1`). `full_height_v1`: inline card that FILLS its container height (media takes the remaining space) with a countdown → close overlay — NOT modal (the app hosts the view; only `fullscreen_hero_v1` launches the modal Activity). `card_compact_v1`: icon left, title + 16:9 media stacked beside it, full-width CTA below, "Ad" badge pinned to the card's top-left corner, NO body text (media aspect fixed 16:9 — `media_aspect_ratio` ignored for this template). Cross-project parity: matches `nativeTemplateIdEnum` in admin `schemas.ts` (7 values). |
+| `ui_config.ad_badge.border_radius` | NEW 0.16.x. `[topLeft, topRight, bottomRight, bottomLeft]` ints ≥0, default `[4, 4, 4, 4]`. Wrong length / negative → default. Admin schema: `z.array(z.number().int().min(0)).length(4).nullable().default([4,4,4,4])`. NOTE `card_compact_v1` pins the badge to the card corner with an effective radius `[8, 0, 8, 0]` (admin `defaultBadgeRadius(templateId)`). |
+| `ui_config.ad_badge` default colors (CHANGED 0.16.x) | `background_color` / `text_color` now fall back to FIXED defaults **`#1E88E5` / `#FFFFFF`** across ALL templates (was per-template: card_no_media orange, banner gray, fullscreen amber). Invalid/absent hex → these defaults. Set explicit colors to override. Visual change for configs without explicit badge colors. |
+| Native default text/spacing (CHANGED 0.16.5) | `ad_title` default font drops **16 → 14sp**, `ad_body` **14 → 12sp**, `ui_config.item_spacing` **8 → 6dp**. Applies to ALL native templates; explicit RC values still override. Parser/admin defaults updated to match. |
+| `ui_config.item_spacing` | Existing field (gap in dp between stacked groups — media/info/cta, in `layout_order`). Int ≥0, **default now 6** (was 8). Admin schema: `z.number().int().min(0).default(6)`. |
+| `xapp_ad_units[*].preload_trigger_by_segment` | NEW 0.15.0. Optional map `{ "<segment>": "<trigger>" }` overriding `preload_trigger` per user segment. Keys must be non-blank (SDK drops blank keys + WARN; admin `z.record(z.string().min(1), preloadTriggerEnum)` rejects blank). Values use the SAME enum + alias resolution as `preload_trigger` (`INIT_CRITICAL \| INIT_DELAYED \| LAZY \| SCREEN`, case-insensitive; legacy `INIT`→`INIT_DELAYED`). Absent / `{}` = OK (no override; effective trigger falls back to `preload_trigger`). |
+| `xapp_ad_units[*].load_timeout_ms` | NEW 0.16.0. Int, default null. Range 1000–60000; out-of-range → null + WARN. Per-unit coroutine load timeout — overrides the consuming placement's `load_timeout_ms` per chain entry (show-path) and the fixed 10s preload timeout. Parallel chains: the chain ceiling stays the placement's `load_timeout_ms`. See the field-table rows below (carried from 0.16.0). |
+| `xapp_p_*.ad_chain.entries[*].enable_live_load` | NEW 0.16.0 (per entry). Bool, default **true** (existing behavior). Set false to exclude THIS entry from show-path live-load (OWN_LOAD tier + parallel_auction floor-wait), except the lazy carveout. Per-entry — NOT a placement-level `ad_chain.enable_live_load`. See the field-table row below (carried from 0.16.0). |
 
 ## Changes since 0.12.7
 
@@ -75,7 +88,7 @@ File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadat
 | `xapp_ad_units[*].mediation` | Enum now `ADMOB` / `MAX` / `IRONSOURCE` / `META`. **Only `ADMOB` is active at runtime**; MAX/IRONSOURCE/META are reserved. `META` requires a `meta_config` object or the unit is skipped. Keep generating `ADMOB`. |
 | `ad_chain.load_strategy` | NEW. `waterfall` (default) / `parallel_first` / `parallel_auction`. Replaces the boolean `parallel_load` (still accepted as legacy: `true`→`parallel_auction`, `false`/absent→`waterfall`). Emit `load_strategy`, not `parallel_load`. |
 | `xapp_p_*.ad_chain.entries[*].enable_live_load` | **NEW 0.16.0 (per entry).** Bool, default **true** (existing behavior — this entry is live-loaded on buffer miss at show). Set false to exclude THIS entry from the show-path OWN_LOAD tier (and the parallel_auction floor-wait sub-auction) — it then contributes only via preload/reuse — EXCEPT the lazy carveout (entry unit `preload_trigger: lazy` + empty buffer + no pending fill → still live-loads). Live-load runs only the gate-open entries, keeping `load_strategy` over that subset; when EVERY entry is gated off, `show()` returns false with outcome `LIVE_LOAD_DISABLED`. `load()` is NOT gated. NOTE: this is a per-entry field on `ad_chain.entries[]`, not a placement-level `ad_chain.enable_live_load`. |
-| `template_id` | 5 templates now: `card_media_v1`, `card_no_media_v1`, `banner_horizontal_v1`, `collapsible_v1` (NEW), `fullscreen_hero_v1` (NEW). Render mode is template-driven — `fullscreen_hero_v1` launches the modal Activity; all others render inline. `NATIVE_FULLSCREEN` format no longer exists (collapsed into `native`). |
+| `template_id` | Template set grew to 5 here: `card_media_v1`, `card_no_media_v1`, `banner_horizontal_v1`, `collapsible_v1` (NEW), `fullscreen_hero_v1` (NEW). (Later grown to 7 in 0.16.x — see "Changes since 0.13.0" at top.) Render mode is template-driven — `fullscreen_hero_v1` launches the modal Activity; all others render inline. `NATIVE_FULLSCREEN` format no longer exists (collapsed into `native`). |
 | `ui_config.skip_delay_sec` | NEW. Int range 0–15, default 5. Native-fullscreen only — seconds before the close (X) button becomes interactive. |
 | `ui_config.margin` | NEW. `[top, right, bottom, left]` ints ≥0, default `[0,0,0,0]`. (Wrong length → default.) |
 | `ui_config.border.visible` | NEW field on the border block (default true). Border block is `{visible, color, width_dp}`. |
@@ -90,7 +103,7 @@ File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadat
 
 - `min_fullscreen_interval_sec` (int default 30, coerced ≥0), `launch_cooldown_ms` (long default 4000, coerced ≥0).
 - `meta_mediation_enabled` (bool default false; banner/native; SDK coerces `reload_interval_sec=0` + WARN when true).
-- Native ad card always bordered (AdMob "Ads disguised as content"). `ad_badge.visible` does not exist — badge always renders. `ad_badge.text` whitelist `{"Ad","Sponsored","Promoted","Quảng cáo"}` → non-whitelisted normalized to "Ad" + WARN.
+- Native ad card always bordered (AdMob "Ads disguised as content"). `ad_badge.visible` does not exist — badge always renders. `ad_badge.text` whitelist `{"Ad","Sponsored","Promoted","Quảng cáo"}` → non-whitelisted normalized to "Ad" + WARN. `ad_badge` gains `border_radius` (0.16.x) and its `background_color`/`text_color` default to fixed `#1E88E5`/`#FFFFFF` — see "Changes since 0.13.0" at top.
 
 ## Top-level shape
 
@@ -284,12 +297,13 @@ Cross-rules enforced by the SDK parser:
 
 ```jsonc
 {
-  "template_id": "card_media_v1",   // enum: card_media_v1 | card_no_media_v1 | banner_horizontal_v1 | collapsible_v1 | fullscreen_hero_v1
+  "template_id": "card_media_v1",   // enum (7): card_media_v1 | card_no_media_v1 | banner_horizontal_v1 | collapsible_v1 | fullscreen_hero_v1 | full_height_v1 | card_compact_v1
                                     //   default card_media_v1. fullscreen_hero_v1 -> modal Activity; others render inline.
   "skip_delay_sec": 5,              // NEW. int [0..15], default 5. fullscreen_hero_v1 only — close button delay.
   "background": "#FFFFFF",          // hex #RRGGBB or #RRGGBBAA. default #FFFFFF
   "border_radius": [12,12,12,12],   // 4 ints >=0 (TL, TR, BR, BL). wrong length -> default
   "margin": [0,0,0,0],              // NEW. 4 ints >=0 (top, right, bottom, left). wrong length -> default
+  "item_spacing": 6,                // int >=0, default 6 (was 8 pre-0.16.5). gap in dp between stacked groups (layout_order)
   "border": {                       // always applied to native card (AdMob policy)
     "visible": true,                // NEW field. default true
     "color": "#E0E0E0",             // hex, default #E0E0E0
@@ -327,12 +341,13 @@ Cross-rules enforced by the SDK parser:
   "ad_info": {
     "visible": true,
     "ad_icon": { "visible": true, "corner_radius_dp": 0, "size_dp": null }, // corner_radius_dp (int >=0, default 0); size_dp NEW 0.12.0 (int or null, coerced >=1 when set; null = per-template default 56/50/48/50/48)
-    "ad_title": { "visible": true, "text_color": "#000000",   "font_size": 16 }, // font_size NEW (sp >=1)
-    "ad_body":  { "visible": true, "text_color": "#B3000000", "font_size": 14 },
+    "ad_title": { "visible": true, "text_color": "#000000",   "font_size": 14 }, // font_size sp >=1, default 14 (was 16 pre-0.16.5)
+    "ad_body":  { "visible": true, "text_color": "#B3000000", "font_size": 12 }, // default 12 (was 14 pre-0.16.5)
     "ad_badge": {                   // NO `visible` field — badge always renders
-      "background_color": null,     // null OR hex; null = template default
-      "text_color": null,           // null OR hex; null = white
-      "text": "Ad"                  // whitelist: "Ad"|"Sponsored"|"Promoted"|"Quảng cáo" (else -> "Ad" + WARN)
+      "background_color": null,     // null OR hex; null/invalid = fixed default #1E88E5 (0.16.x; was per-template)
+      "text_color": null,           // null OR hex; null/invalid = fixed default #FFFFFF
+      "text": "Ad",                 // whitelist: "Ad"|"Sponsored"|"Promoted"|"Quảng cáo" (else -> "Ad" + WARN)
+      "border_radius": [4, 4, 4, 4] // NEW 0.16.x. [TL,TR,BR,BL] ints >=0, default [4,4,4,4]. card_compact_v1 pins [8,0,8,0].
     }
   },
   "ad_metadata": {
@@ -397,7 +412,7 @@ HARD ERRORS (admin will reject):
 23. `cta_button.style.type` not `solid|outline`.
 24. `modal_loading` present on `appopen`/banner/native placement (SDK blocks — WARN).
 25. `rotation_interval_sec` > 0 on non-native placement (SDK ignores — WARN).
-26. `ui_config.template_id` not in the 5-value enum `{card_media_v1, card_no_media_v1, banner_horizontal_v1, collapsible_v1, fullscreen_hero_v1}` — admin rejects; SDK render router falls back. ABSENT = OK (defaults `card_media_v1`).
+26. `ui_config.template_id` not in the 7-value enum `{card_media_v1, card_no_media_v1, banner_horizontal_v1, collapsible_v1, fullscreen_hero_v1, full_height_v1, card_compact_v1}` — admin rejects; SDK render router falls back. ABSENT = OK (defaults `card_media_v1`). `full_height_v1` / `card_compact_v1` are the two added in 0.16.x.
 27. `min_fullscreen_interval_sec` < 0 / `launch_cooldown_ms` < 0 (SDK coerces; admin rejects negative).
 28. `meta_mediation_enabled: true` AND `format` not in `{banner, native}`.
 29. `border.width_dp` < 1 (SDK coerces to 1 + WARN; admin should reject negative).

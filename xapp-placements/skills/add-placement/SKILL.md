@@ -14,7 +14,7 @@ If user passed a path argument → use it. Else `Bash: ls *-ad-placements.jsonc 
 
 ## Step 1 — Load file + schema
 
-Read target file. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.13.0.md` + `presets.md`.
+Read target file. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.16.7.md` + `presets.md`.
 
 Parse (mentally — no actual JSON parser needed since we Edit text):
 - existing `xapp_ad_units` IDs + their `format`
@@ -47,7 +47,7 @@ Build the `xapp_p_<name>: { ... }` block. Fields in order: `name`, `enabled` (tr
 - `reuse_strategy` (NEW 0.11.8): enum `own_first` (default) | `reuse_before_load` | `reuse_first`. Placement top-level field. Omit unless the user wants to favor reusing a ready ad over loading own (`reuse_before_load` / `reuse_first`). Only effective when `xapp_config.late_reuse_enabled: true`.
 - `reuse_chain` (NEW 0.13.0): optional object `{ "entries": [ { "ad_unit_id": "<id>" } ] }`. Ordered allowlist of ad units to borrow from at the REUSE tier (same-format only, list-order walk). Omit unless the user wants to specify cross-unit borrow targets. Empty/absent = no cross-unit borrow.
 - Legacy note: there is no `provider` field on a placement (SDK drops it silently — do not emit it).
-- For NATIVE `ui_config`, `template_id` may be any of the 5 values: `card_media_v1`, `card_no_media_v1`, `banner_horizontal_v1`, `collapsible_v1`, `fullscreen_hero_v1`. `fullscreen_hero_v1` renders as a fullscreen modal (others inline) and supports `skip_delay_sec` (int [0..15], default 5 — close-button delay).
+- For NATIVE `ui_config`, `template_id` may be any of the 7 values: `card_media_v1`, `card_no_media_v1`, `banner_horizontal_v1`, `collapsible_v1`, `fullscreen_hero_v1`, `full_height_v1`, `card_compact_v1` (last two NEW 0.16.x). `fullscreen_hero_v1` renders as a fullscreen modal (all others inline, incl. `full_height_v1` which fills its host container) and supports `skip_delay_sec` (int [0..15], default 5 — close-button delay).
 - `ui_config_triggered` (NEW 0.12.3): OPTIONAL second `ui_config` with the SAME shape, NATIVE only. Emit ONLY if the user explicitly wants a distinct look for the triggered render pass (host calls render with `triggered=true`). When present, the SDK prefers it for triggered renders and falls back to `ui_config` otherwise. Omit by default — most placements need only `ui_config`.
 
 Show user the assembled JSONC. Ask confirm.

@@ -1,7 +1,7 @@
 ---
 name: xapp-validator
 description: |
-  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.13.0 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
+  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.16.7 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
 
   <example>
   Context: User just ran `/xapp-placements:create-config` and the skill wrote `controlkit-ad-placements.jsonc`.
@@ -15,7 +15,7 @@ description: |
   <example>
   Context: User edits a placement block manually and asks for review.
   user: "Added a new `inter_unlock_charge` placement. Check it."
-  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.13.0 schema."
+  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.16.7 schema."
   <commentary>
   Manual edits to xapp config also warrant validation.
   </commentary>
@@ -27,7 +27,7 @@ You are **xapp-validator** — autonomous validator for XAppAdKit (xappsdk) ad p
 
 ## Scope
 
-Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.13.0 (`com.xantus:x-app-ad-kit-sdk:0.13.0`).
+Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.16.7 (`com.xantus:x-app-ad-kit-sdk:0.16.7`).
 
 ## Inputs
 
@@ -38,7 +38,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 1. Read the file.
 2. Strip JSONC comments (`//...` line + `/* ... */` block) into a temp string for parsing logic, but keep line numbers for error reporting. (Conceptual — you don't actually run a parser; you reason over the text.)
 3. Walk the rules below. For each violation, record: severity (ERROR / WARN), location (key path + approx line), message, fix hint.
-4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.13.0.md`. Use it as authoritative truth on any field you're unsure about.
+4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.16.7.md`. Use it as authoritative truth on any field you're unsure about.
 
 ## Rules — HARD ERRORS (admin will reject)
 
@@ -105,7 +105,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 
 ### `ui_config` (native placements)
 > **NEW 0.12.3**: every rule in this section ALSO applies to `ui_config_triggered` (same shape — the optional triggered-render variant). Validate both blocks when present.
-- `template_id` PRESENT AND not in the 5-value enum `{card_media_v1, card_no_media_v1, banner_horizontal_v1, collapsible_v1, fullscreen_hero_v1}`. SDK 0.12.0 ships 5 templates; web admin enforces enum (cross-project schema-parity invariant). Parser accepts any string and render router falls back, but admin import rejects unknown values. Render mode is template-driven — `fullscreen_hero_v1` launches the modal Activity; all others render inline. Field ABSENT = OK (parser defaults to `card_media_v1`) — DO NOT flag absence as error.
+- `template_id` PRESENT AND not in the 7-value enum `{card_media_v1, card_no_media_v1, banner_horizontal_v1, collapsible_v1, fullscreen_hero_v1, full_height_v1, card_compact_v1}`. SDK 0.16.x ships 7 templates (`full_height_v1` + `card_compact_v1` added in 0.16.x); web admin enforces enum (cross-project schema-parity invariant). Parser accepts any string and render router falls back, but admin import rejects unknown values. Render mode is template-driven — `fullscreen_hero_v1` launches the modal Activity; all others render inline (incl. `full_height_v1`, which fills its host container). Field ABSENT = OK (parser defaults to `card_media_v1`) — DO NOT flag absence as error.
 - `background` not matching hex regex `^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$`.
 - `border_radius` not length 4 OR any value < 0.
 - **NEW 0.11.5**: `margin` PRESENT AND not length 4 OR any value < 0 (wrong length → SDK default `[0,0,0,0]`).
@@ -115,6 +115,8 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.11.5**: `skip_delay_sec` outside [0, 15] (SDK coerces; admin should reject). Native-fullscreen (`fullscreen_hero_v1`) only — seconds before the close (X) button becomes interactive.
 - `ad_badge.visible` field PRESENT (badge always renders per AdMob policy; SDK silently drops). Flag as WARN advising strip.
 - `ad_badge.text` PRESENT AND not in whitelist `{"Ad", "Sponsored", "Promoted", "Quảng cáo"}` (SDK normalizes to "Ad" with WARN). Flag as WARN advising fix.
+- **NEW 0.16.x**: `ad_badge.border_radius` PRESENT AND not an array of length 4, OR any value not an int / negative (SDK falls back to default `[4,4,4,4]`; admin `z.array(z.number().int().min(0)).length(4).nullable().default([4,4,4,4])` rejects wrong-length / negative). ABSENT / null = OK. NOTE: `card_compact_v1` pins the badge at `[8,0,8,0]` regardless — an explicit `border_radius` on that template still parses but the corner-pinned layout may override it visually.
+- **NOTE 0.16.x**: `ad_badge.background_color` / `text_color` ABSENT or invalid hex now default to fixed `#1E88E5` / `#FFFFFF` (was per-template). NOT an error when absent — informational only. A malformed hex string (non-null, fails regex) is still a WARN via the color-regex rule below.
 - `ad_media.aspect_ratio` not matching `^\d+:\d+$` with both > 0.
 - `cta_button.placement` not `top|bottom`.
 - `cta_button.style.type` not `solid|outline`.
@@ -190,7 +192,7 @@ Then summary:
 xapp-validator — <file>
 Errors:   <N>
 Warnings: <M>
-SDK:      0.13.0
+SDK:      0.16.7
 Status:   <BLOCK_IMPORT | OK_WITH_WARNINGS | CLEAN>
 ─────────────────────────────────────
 ```
