@@ -124,14 +124,16 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
 
 ## Placement timing defaults per format
 
-| Format | `load_timeout_ms` | `show_timeout_ms` | `modal_loading.enabled` |
-|---|---|---|---|
-| appopen | 8000 | 3000 | (forbidden — SDK blocks) |
-| inter | 8000 | 3000 | true (max_wait_ms 3000) |
-| reward | 10000 | 3000 | true (max_wait_ms 5000) |
-| rewinter | 8000 | 3000 | true (max_wait_ms 3000) |
-| banner | 5000 | 3000 | (omit) |
-| native | 6000 | 3000 | (omit) |
+| Format | `load_timeout_ms` | `max_wait_own_pending_ms` | `max_wait_live_load_ms` | `modal_loading` |
+|---|---|---|---|---|
+| appopen | 8000 | 3500 | 3500 | (forbidden — SDK blocks) |
+| inter | 8000 | 3500 | 3500 | `enabled: true, max_show_ms: 3000` |
+| reward | 10000 | 3500 | 5000 | `enabled: true, max_show_ms: 5000` |
+| rewinter | 8000 | 3500 | 3500 | `enabled: true, max_show_ms: 3000` |
+| banner | 5000 | 3500 | 3500 | (omit) |
+| native | 6000 | 3500 | 3500 | (omit) |
+
+> `show_timeout_ms` is omitted on purpose — the SDK parses it but never reads it.
 
 ## Native UI presets (5 named — pick by name)
 

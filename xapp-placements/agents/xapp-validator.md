@@ -127,6 +127,8 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.11.9**: `banner.height_dp` / `banner.padding_dp` PRESENT AND not an integer, or negative (`height_dp` coerced ≥1, `padding_dp` coerced ≥0; admin should reject non-int / negative). `banner` block consumed by `banner_horizontal_v1` ONLY. ABSENT = OK (defaults 125 / 12).
 - **NEW 0.11.9**: `ad_info.ad_icon.size_dp` PRESENT AND not an integer OR < 1 (SDK coerces ≥1 when set; null = per-template default). ABSENT / null = OK.
 - **NEW 0.12.6**: `collapse_arrow.targets` PRESENT AND not an array of strings, OR containing a token outside `{"media", "cta"}` (SDK drops invalid tokens + WARN, empty → default `["media"]`; admin should reject a non-subset). ABSENT = OK (default `["media"]`).
+- **NEW 0.12.1**: `show_config.modal_loading.min_show_ms` > `max_show_ms` when `max_show_ms > 0` (SDK clamps min down + WARN; admin should reject).
+- **NEW 0.12.1**: `timing_config.max_wait_own_pending_ms` or `max_wait_live_load_ms` PRESENT AND not an integer, OR negative (SDK coerces negative to 0 = unbounded + WARN; admin should reject). `0` is VALID and means unbounded.
 
 ## Rules — WARNINGS
 
@@ -175,6 +177,10 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.12.3**: `reload_after_show_delay_ms > 0` AND `auto_reload_on_show: false` on the same ad_unit — the delay is a no-op (refill never auto-fires). Recommend removing one or the other.
 - **NEW 0.12.3**: `firebase_ad_impression_enabled: true` present — INFO, not an error. Xantus default is `false` (AdMob↔GA4 linking pushes ad revenue server-side; client-side `ad_impression` off to avoid GA4 `totalAdRevenue` double-count). `true` is valid only when a project lacks the AdMob↔GA4 link and needs the client-side event — confirm intent. `false` (or absent-but-emitted-false by the generator) = expected, do NOT flag.
 - **NEW 0.12.3**: `ui_config_triggered` present but byte-identical to `ui_config` — redundant (triggered render would look the same); recommend dropping it unless intentional.
+- `show_config.modal_loading.max_wait_ms` present — deprecated since 0.12.1: it backfills `max_show_ms` plus both `timing_config.max_wait_*` budgets. Recommend replacing with `max_show_ms` + the two explicit budgets.
+- `timing_config.load_timeout_ms` > `max_wait_live_load_ms` when the latter is > 0 — the chain ceiling is clamped down to the budget, so a slow first entry can consume it and later entries never run.
+- `timing_config.max_wait_live_load_ms: 0` (unbounded live load) on an inter/reward/rewinter placement — user can be left waiting with no ceiling; recommend 3000-4000ms.
+- `timing_config.show_timeout_ms` present — UNUSED by the SDK (parsed, never read); harmless but informational.
 
 ## Output Format
 

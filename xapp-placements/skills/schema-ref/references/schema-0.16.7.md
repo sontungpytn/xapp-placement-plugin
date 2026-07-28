@@ -253,14 +253,21 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
     "capping": { "hourly": 4, "daily": 10, "session": 5 },  // each default Int.MAX (unlimited)
     "min_interval_sec": 90,         // int. 0 = none
     "rotation_interval_sec": 45,    // int. native-only. 0 = no rotation
-    "modal_loading": {              // optional. for inter/reward/rewinter (NOT banner/native/appopen)
-      "enabled": true,              // default false
-      "max_wait_ms": 3000           // default 3000
+    "modal_loading": {              // optional. UI ONLY since 0.12.1. for inter/reward/rewinter (NOT banner/native/appopen)
+      "enabled": true,              // default false. does NOT bound the ad wait anymore
+      "min_show_ms": 0,             // long. default 0. minimum spinner visibility (anti-flash)
+      "max_show_ms": 3000           // long. default 3000. 0 = never auto-dismiss.
+                                    //   elapsed -> spinner dismissed, AD WAIT CONTINUES; a later fill still shows.
+      // "max_wait_ms": 3000        // DEPRECATED pre-0.12.1. still parsed: backfills max_show_ms AND both
+                                    //   timing_config.max_wait_* budgets when those are absent. strip from new configs.
     }
   },
   "timing_config": {
-    "load_timeout_ms": 10000,       // long. default 10000
-    "show_timeout_ms": 3000         // long. default 3000
+    "load_timeout_ms": 10000,       // long. default 10000. per chain entry + parallel ceiling
+    "show_timeout_ms": 3000,        // long. default 3000. UNUSED — parsed, never read by the SDK
+    "max_wait_own_pending_ms": 3500,// long. default 3500. per-entry OWN_PENDING join budget. 0 = unbounded
+    "max_wait_live_load_ms": 3500   // long. default 3500. OWN_LOAD live-load budget, spinner on or off.
+                                    //   0 = unbounded. clamps load_timeout_ms down when smaller.
   },
   "segments": [],                   // List<String>. [] or ["*"] = all users
   "reuse_strategy": "own_first",    // NEW 0.11.8. enum own_first | reuse_before_load | reuse_first. default own_first.
