@@ -57,7 +57,7 @@ c. Ask: `trigger_event`, `screen_name`, short `description` (1 sentence), `prior
 d. Ask capping based on format:
    - `appopen`: usually `session: 1` (cold) or `min_interval_sec: 30` (resume). Ask `cold` vs `resume`.
    - `inter`: `hourly`, `daily`, `session`, `min_interval_sec`. Defaults 4/10/5/90 if user says "default".
-   - `reward` / `rewinter`: `session` only (e.g. 20). `modal_loading.enabled=true, max_wait_ms=5000`.
+   - `reward` / `rewinter`: `session` only (e.g. 20). `modal_loading.enabled=true, max_show_ms=5000`, `timing_config.max_wait_live_load_ms=5000`.
    - `native`: `rotation_interval_sec` (sticky 30-60) OR `capping.session` (modal/install_success). Ask which mode.
    - `banner`: similar to native.
 
