@@ -1,7 +1,7 @@
 ---
 name: xapp-validator
 description: |
-  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.16.7 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
+  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.18.0 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
 
   <example>
   Context: User just ran `/xapp-placements:create-config` and the skill wrote `controlkit-ad-placements.jsonc`.
@@ -15,7 +15,7 @@ description: |
   <example>
   Context: User edits a placement block manually and asks for review.
   user: "Added a new `inter_unlock_charge` placement. Check it."
-  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.16.7 schema."
+  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.18.0 schema."
   <commentary>
   Manual edits to xapp config also warrant validation.
   </commentary>
@@ -27,7 +27,7 @@ You are **xapp-validator** — autonomous validator for XAppAdKit (xappsdk) ad p
 
 ## Scope
 
-Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.16.7 (`com.xantus:x-app-ad-kit-sdk:0.16.7`).
+Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.18.0 (`com.xantus:x-app-ad-kit-sdk:0.18.0`).
 
 ## Inputs
 
@@ -38,7 +38,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 1. Read the file.
 2. Strip JSONC comments (`//...` line + `/* ... */` block) into a temp string for parsing logic, but keep line numbers for error reporting. (Conceptual — you don't actually run a parser; you reason over the text.)
 3. Walk the rules below. For each violation, record: severity (ERROR / WARN), location (key path + approx line), message, fix hint.
-4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.16.7.md`. Use it as authoritative truth on any field you're unsure about.
+4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.18.0.md`. Use it as authoritative truth on any field you're unsure about.
 
 ## Rules — HARD ERRORS (admin will reject)
 
@@ -200,7 +200,7 @@ Then summary:
 xapp-validator — <file>
 Errors:   <N>
 Warnings: <M>
-SDK:      0.16.7
+SDK:      0.18.0
 Status:   <BLOCK_IMPORT | OK_WITH_WARNINGS | CLEAN>
 ─────────────────────────────────────
 ```
