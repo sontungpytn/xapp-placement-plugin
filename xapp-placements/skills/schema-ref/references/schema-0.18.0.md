@@ -9,7 +9,7 @@ File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadat
 | Area | Change |
 |---|---|
 | `xapp_config.preload.load_timeout_ms` | NEW. Int ms, default 30000, coerced to [1000, 60000] with a WARN when clamped. Coroutine timeout for one **PRELOAD-path** load — replaces the previously hardcoded `ChainLoader.PRELOAD_TIMEOUT_MS = 10_000L`, which is now `DEFAULT_PRELOAD_TIMEOUT_MS = 30_000L` and only applies before Remote Config lands. Per-unit `xapp_ad_units[*].load_timeout_ms` still wins. Does NOT affect the show path — `loadChain` uses the placement's `timing_config.load_timeout_ms`. Admin schema: `z.number().int().min(1000).max(60000).default(30000)`. |
-| `xapp_config.preload.max_concurrent_loads` | DEFAULT CHANGED `3` → `6`. The `PreloadScheduler` semaphore holds a permit for the whole load timeout, so the longer default timeout holds permits longer; more permits absorb it. Range unchanged [1, 8]; admin now enforces `.max(8)` (previously only `.min(1)`, so it accepted values the SDK silently clamped). Apps with an explicit RC value keep it. |
+| `xapp_config.preload.max_concurrent_loads` | DEFAULT CHANGED `3` → `6`. The `PreloadScheduler` semaphore holds a permit for the whole load timeout, so the longer default timeout holds permits longer; more permits absorb it. Range unchanged [1, 8]; the admin already enforces it via `.max(8)`. Apps with an explicit RC value keep it. |
 
 ## Changes since 0.13.0 (→ 0.16.7)
 
