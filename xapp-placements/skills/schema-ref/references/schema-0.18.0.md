@@ -1,8 +1,15 @@
-# XAppAdKit JSONC Schema — SDK 0.16.7
+# XAppAdKit JSONC Schema — SDK 0.18.0
 
-Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.16.7` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
+Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.18.0` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
 
 File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadata.
+
+## Changes since 0.16.7 (→ 0.18.0)
+
+| Area | Change |
+|---|---|
+| `xapp_config.preload.load_timeout_ms` | NEW. Int ms, default 30000, coerced to [1000, 60000] with a WARN when clamped. Coroutine timeout for one **PRELOAD-path** load — replaces the previously hardcoded `ChainLoader.PRELOAD_TIMEOUT_MS = 10_000L`, which is now `DEFAULT_PRELOAD_TIMEOUT_MS = 30_000L` and only applies before Remote Config lands. Per-unit `xapp_ad_units[*].load_timeout_ms` still wins. Does NOT affect the show path — `loadChain` uses the placement's `timing_config.load_timeout_ms`. Admin schema: `z.number().int().min(1000).max(60000).default(30000)`. |
+| `xapp_config.preload.max_concurrent_loads` | DEFAULT CHANGED `3` → `6`. The `PreloadScheduler` semaphore holds a permit for the whole load timeout, so the longer default timeout holds permits longer; more permits absorb it. Range unchanged [1, 8]; admin now enforces `.max(8)` (previously only `.min(1)`, so it accepted values the SDK silently clamped). Apps with an explicit RC value keep it. |
 
 ## Changes since 0.13.0 (→ 0.16.7)
 
@@ -158,12 +165,14 @@ Admin rejects import if `id` not pre-registered or `package_name` mismatches the
                                     //   (all adapters) before first ad request. 0 = wait fully (prior behavior); >0 = request
                                     //   ads after timeout while adapters finish in background. SDK GlobalConfig.adapterInitTimeoutMs.
   "preload": {                      // optional sub-object
-    "max_concurrent_loads": 3,      // int [1..8], default 3
+    "max_concurrent_loads": 6,      // int [1..8], default 6 (CHANGED 0.18.0, was 3)
     "init_delayed_after_ms": 3000,  // long [0..10000], default 3000
     "vendor_dedupe": false,         // bool, default false (CHANGED 0.11.8, was true). true = same-vendor units load sequentially.
     "vendor_dedupe_spacing_ms": 800,// long [0..5000], default 800
     "circuit_threshold": 3,         // NEW. int coerced >=1, default 3. NO_FILL count that trips breaker.
-    "circuit_backoff_sec": 60       // NEW. int coerced >=1, default 60. SECONDS (SDK ×1000 → ms). Breaker open duration.
+    "circuit_backoff_sec": 60,      // NEW. int coerced >=1, default 60. SECONDS (SDK ×1000 → ms). Breaker open duration.
+    "load_timeout_ms": 30000        // NEW 0.18.0. int [1000..60000], default 30000. PRELOAD path only —
+                                    //   per-unit load_timeout_ms overrides; show path uses placement timing_config.
   }
 }
 ```
@@ -441,6 +450,7 @@ HARD ERRORS (admin will reject):
 45. NEW 0.13.0: `xapp_config.cross_unit_reuse_enabled` already covered by rule 37 (boolean) — no change.
 46. NEW post-0.13.0: `xapp_config.adapter_init_timeout_ms` present AND not an integer, or outside [0, 30000] (admin `z.number().int().min(0).max(30000).default(0)`; SDK coerces). ABSENT = OK (default 0). Generator emits `0` (wait fully = prior behavior) — `0` is expected, not an error.
 47. NEW (SDK 0.15.0): `xapp_ad_units[*].preload_trigger_by_segment` present AND (a) any key blank/empty (SDK drops blank keys with WARN; admin `z.record(z.string().min(1), preloadTriggerEnum)` rejects), or (b) any value not a valid trigger after alias resolution — same enum + legacy/unknown coercion as `preload_trigger` (rule 8): legacy `"INIT"` → `INIT_DELAYED` + WARN; unknown → `INIT_DELAYED` + WARN in the SDK; admin `z.enum` rejects the raw unknown on import. ABSENT / `{}` = OK (no override; effective trigger = `preload_trigger`).
+48. NEW (SDK 0.18.0): `xapp_config.preload.load_timeout_ms` present AND not an integer, or outside [1000, 60000] (SDK `coerceIn(1000, 60000)` + WARN; admin `z.number().int().min(1000).max(60000).default(30000)` rejects on import). ABSENT = OK (default 30000). Applies to the PRELOAD path only.
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
@@ -472,3 +482,5 @@ WARNINGS:
 - NEW 0.12.0: `fullscreen.action_container.position` not in `{left, right}` — SDK uses default `"right"` + WARN.
 - NEW 0.12.0: `fullscreen.close_button.icon` not in `{x, arrow_forward}` — SDK uses default `"x"` + WARN.
 - NEW 0.12.0: `fullscreen` block present on a non-`fullscreen_hero_v1` template — SDK ignores (strip).
+- NEW 0.18.0: a unit sets `load_timeout_ms` AND `xapp_config.preload.load_timeout_ms` is also set — per-unit wins, so the global value is a no-op for that unit. Informational, not an error.
+- NEW 0.18.0: `preload.load_timeout_ms` does not change the show path. Tuning how long a placement waits at show time means editing the placement's `timing_config.load_timeout_ms` and `show_config.modal_loading.max_wait_ms`.
