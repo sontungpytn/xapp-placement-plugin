@@ -39,7 +39,7 @@ Ask user: "Use TEST vendor_ids (default) or paste prod AdMob unit IDs now?" If p
 
 Ad_unit fields (0.11.5+) — allow but do not block on them; default sensibly (omit or null) unless user supplies:
 - `http_timeout_ms`: int 5000–30000 or null (default null). If set, must be `<` consuming placement's `load_timeout_ms`.
-- `load_timeout_ms`: int 1000–60000 or null (default null; SDK 0.16.0+). Per-unit coroutine load timeout — overrides placement `load_timeout_ms` per chain entry and the 10s preload default.
+- `load_timeout_ms`: int 1000–60000 or null (default null; SDK 0.16.0+). Per-unit coroutine load timeout — overrides placement `load_timeout_ms` per chain entry and the global preload timeout (`xapp_config.preload.load_timeout_ms`, default 30000).
 - `media_aspect_ratio`: NATIVE units only — `any|landscape|portrait|square` or null (default null).
 
 ## Step 4 — Loop: define placements
