@@ -86,12 +86,13 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
   "firebase_ad_impression_enabled": false,
   "adapter_init_timeout_ms": 0,
   "preload": {
-    "max_concurrent_loads": 3,
+    "max_concurrent_loads": 6,
     "init_delayed_after_ms": 3000,
     "vendor_dedupe": false,
     "vendor_dedupe_spacing_ms": 800,
     "circuit_threshold": 3,
-    "circuit_backoff_sec": 60
+    "circuit_backoff_sec": 60,
+    "load_timeout_ms": 30000
   }
 }
 ```

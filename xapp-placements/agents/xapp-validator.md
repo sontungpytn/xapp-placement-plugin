@@ -58,6 +58,8 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.11.5**: `splash_min_duration_ms` outside [0, 15000] (SDK clamps to default 1000; admin should reject out-of-range).
 - **NEW 0.11.5**: `preload.circuit_threshold` < 1 (SDK coerces to ≥1; admin should reject).
 - **NEW 0.11.5**: `preload.circuit_backoff_sec` < 1 (SDK coerces to ≥1; value is in SECONDS — SDK stores ms = sec×1000).
+- **NEW 0.18.0**: `preload.load_timeout_ms` present AND not an integer, or outside [1000, 60000] (SDK `coerceIn(1000, 60000)` + WARN; admin `z.number().int().min(1000).max(60000).default(30000)`). ABSENT = OK (default 30000). PRELOAD path only — per-unit `load_timeout_ms` overrides it.
+- **NOTE 0.18.0**: `preload.max_concurrent_loads` default is now `6` (was `3`), range still [1, 8]. Not an error in any case — informational when the field is absent or still set to 3.
 - **NEW 0.11.8**: `cross_unit_reuse_enabled` present AND not boolean (default true). Allows a placement to borrow a buffered fullscreen ad from a unit it does not reference (matched by AdFormat); gated by `late_reuse_enabled=true`.
 - **NOTE 0.11.8**: `preload.vendor_dedupe` default is now `false` (was `true`). Not an error in any case — informational when the field is absent.
 - **NEW 0.12.3**: `firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean().default(true)`). ABSENT = OK (SDK/admin schema default true). NOTE: generator emits `false` by Xantus convention (AdMob↔GA4 server-side revenue) — `false` is expected, only a type mismatch is an error.
