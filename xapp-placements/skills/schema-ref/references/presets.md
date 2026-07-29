@@ -138,7 +138,7 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
 
 ## Native UI presets (5 named — pick by name)
 
-SDK 0.18.0 supports 7 `template_id` values. Pick template by content shape; the named preset below selects template + color scheme + layout knobs together.
+SDK 0.17.1 supports 7 `template_id` values. Pick template by content shape; the named preset below selects template + color scheme + layout knobs together.
 
 - `card_media_v1` — card with hero media. Renders inline. Use for detail/preview screens.
 - `card_no_media_v1` — card, no media. Renders inline. Use for compact promo / success screens.
@@ -148,7 +148,7 @@ SDK 0.18.0 supports 7 `template_id` values. Pick template by content shape; the 
 - `full_height_v1` (NEW 0.16.x) — inline card that FILLS its host container height (media takes the remaining space) with a countdown → close overlay. NOT modal — the app hosts the view. Use where a native ad should occupy a full screen slot without launching an Activity.
 - `card_compact_v1` (NEW 0.16.x) — icon left, title + 16:9 media stacked beside it, full-width CTA below; "Ad" badge pinned top-left, no body text (media aspect fixed 16:9). Renders inline. Use for dense list rows that still want a media thumbnail.
 
-All native ads in SDK 0.18.0 render with a border (AdMob "Ads disguised as content" policy). Each preset below carries an explicit `border` block matching the card background tone. The border block now also has a `visible` field (default true) alongside `color` + `width_dp`; the presets omit `visible`, so `"visible": true` is the implicit default. Omit the whole block to fall back to SDK default `{visible: true, color: "#E0E0E0", width_dp: 1}`.
+All native ads in SDK 0.17.1 render with a border (AdMob "Ads disguised as content" policy). Each preset below carries an explicit `border` block matching the card background tone. The border block now also has a `visible` field (default true) alongside `color` + `width_dp`; the presets omit `visible`, so `"visible": true` is the implicit default. Omit the whole block to fall back to SDK default `{visible: true, color: "#E0E0E0", width_dp: 1}`.
 
 `ad_badge.visible` does NOT exist in SDK 0.11.9 — badge always renders. Presets do not include the field. `ad_badge.text` accepts only `{"Ad", "Sponsored", "Promoted", "Quảng cáo"}` — any other value normalizes to "Ad" at parse with WARN.
 
