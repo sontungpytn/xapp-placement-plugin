@@ -1,6 +1,6 @@
 # xapp-placements
 
-Fast generator for XAppAdKit (xappsdk) ad placement config JSONC files. Output matches Xantus admin import format + SDK 0.16.7 schema.
+Fast generator for XAppAdKit (xappsdk) ad placement config JSONC files. Output matches Xantus admin import format + SDK 0.17.1 schema.
 
 ## Install
 
@@ -19,16 +19,17 @@ Restart session, verify `/help` shows `/xapp-placements:*` skills. Other methods
 - `/xapp-placements:add-placement` — append 1 placement to existing JSONC. Auto-update `xapp_registry`. Native templates via named preset OR screenshot input.
 - `/xapp-placements:add-ad-unit` — append 1 ad unit to pool. Enforce id regex + vendor uniqueness.
 - `/xapp-placements:validate` — invoke `xapp-validator` agent on a file.
-- `/xapp-placements:schema-ref` — print canonical SDK 0.16.7 schema reference.
+- `/xapp-placements:schema-ref` — print canonical SDK 0.17.1 schema reference.
 
 Validator agent (`xapp-validator`) runs **proactively** after every config write — catches schema violations before they hit admin import.
 
 ## SDK version
 
-Pinned to `com.xantus:x-app-ad-kit-sdk:0.16.7`. Bump plugin when SDK schema changes. **From 0.16.7 the plugin version tracks the SDK version 1:1** (earlier plugin versions used an independent scheme — see the pre-0.16.7 entries below).
+Pinned to `com.xantus:x-app-ad-kit-sdk:0.17.1`. Bump plugin when SDK schema changes. **From 0.16.7 the plugin version tracks the SDK version 1:1** (earlier plugin versions used an independent scheme — see the pre-0.16.7 entries below).
 
 ## Changelog
 
+- **0.17.1** (2026-07-29): Sync to SDK 0.17.1. (1) NEW `xapp_config.preload.load_timeout_ms` (int 1000–60000, default 30000) — the PRELOAD-path coroutine timeout, previously hardcoded at 10000ms in `ChainLoader`. Per-unit `xapp_ad_units[*].load_timeout_ms` still overrides it; the show path is unchanged (placement `timing_config.load_timeout_ms`). (2) `xapp_config.preload.max_concurrent_loads` default **3 → 6**, absorbing the longer permit hold in `PreloadScheduler`; admin continues to enforce the SDK's [1, 8] range on import. Generator preset emits both new values. Validator gains hard-error rule 48 plus two warnings. Schema reference doc renamed `schema-0.16.7.md` → `schema-0.17.1.md`. **Heads-up for whoever bumps the dependency:** despite the patch version, this is not behavior-neutral — apps upgrading 0.17.0 → 0.17.1 inherit a 30s preload timeout in place of the previous 10s, and any config that does not set `max_concurrent_loads` explicitly moves from 3 to 6.
 - **0.16.7** (2026-07-24): Sync to SDK 0.16.7 + realign plugin version to the SDK version. Rolls up the unreleased 0.14–0.16.7 SDK deltas: (1) `template_id` grows to **7** — new `full_height_v1` (inline card that fills its container, media takes remaining space, countdown → close overlay; NOT modal) + `card_compact_v1` (icon left, title + 16:9 media stacked beside it, full-width CTA below, badge pinned top-left, no body). (2) native `ad_badge.border_radius` (`[tl,tr,br,bl]` ints ≥0, default `[4,4,4,4]`; `card_compact_v1` pins `[8,0,8,0]`); badge `background_color`/`text_color` now default to fixed **#1E88E5 / #FFFFFF** instead of per-template fallbacks. (3) Default text/spacing shrink: `ad_title` 16→14sp, `ad_body` 14→12sp, `ui_config.item_spacing` 8→6dp (explicit RC values still override). (4) `xapp_ad_units[*].load_timeout_ms` (0.16.0; int 1000–60000, per-unit coroutine load timeout). (5) `ad_chain.entries[*].enable_live_load` (0.16.0; per-entry bool default true — opt out an entry from show-path live-load). (6) `xapp_ad_units[*].preload_trigger_by_segment` (0.15.0; optional segment→trigger map overriding `preload_trigger`). Non-schema SDK work (block_reason telemetry, high-floor priority, lifecycle hot-reload, P0 show-rate fixes) adds no config keys. Schema reference doc renamed `schema-0.13.0.md` → `schema-0.16.7.md`.
 - **0.10.1** (2026-06-29): SDK `feat/adapter-init-timeout` adds `xapp_config.adapter_init_timeout_ms` (int ms, default 0, bounds [0,30000]) — caps how long `MobileAds.initialize` is awaited before the first ad request; `>0` requests ads after the timeout while adapters finish in the background. It IS a `xapp_config` RC/JSONC field (set from admin or generated config), mirrored in SDK `GlobalConfig` + admin `globalConfigSchema`. Generator now emits `adapter_init_timeout_ms: 0`; schema reference updated.
 - **0.10.0** (2026-06-26): Sync to SDK 0.13.0. New placement field `reuse_chain` — optional ordered allowlist of ad units to borrow from at the REUSE tier (same-format, list-order walk). `cross_unit_reuse_enabled` semantics changed: borrow now scoped to `reuse_chain` (old "borrow from ANY unref'd unit" removed). Cross-unit reuse now covers ALL formats (fullscreen, NATIVE inline via `loadNativeAd()`, BANNER inline via `loadBannerView()`). Late-reuse for NATIVE/BANNER (SDK-internal, no new config key).

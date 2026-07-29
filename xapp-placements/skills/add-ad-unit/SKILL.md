@@ -1,6 +1,6 @@
 ---
 name: add-ad-unit
-description: Append a single ad unit to the `xapp_ad_units` pool of an existing XAppAdKit JSONC config. Enforces id regex, vendor_id uniqueness, mediation enum (ADMOB active at runtime; SDK 0.16.7), format enum. Auto-fills `_meta` from git config user.email + current UTC timestamp. Invokes `xapp-validator` after write. Use when user says "add ad unit", "thêm ad unit", "add new vendor unit", "add admob unit to config".
+description: Append a single ad unit to the `xapp_ad_units` pool of an existing XAppAdKit JSONC config. Enforces id regex, vendor_id uniqueness, mediation enum (ADMOB active at runtime; SDK 0.17.1), format enum. Auto-fills `_meta` from git config user.email + current UTC timestamp. Invokes `xapp-validator` after write. Use when user says "add ad unit", "thêm ad unit", "add new vendor unit", "add admob unit to config".
 argument-hint: [path-to-jsonc-file]
 ---
 
@@ -14,7 +14,7 @@ Same as `add-placement` Step 0.
 
 ## Step 1 — Load + parse pool
 
-Read file. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.16.7.md`.
+Read file. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.17.1.md`.
 
 Extract existing ad_unit `id`s + `vendor_id`s from the `xapp_ad_units` array (text scan OK).
 
@@ -35,7 +35,7 @@ Ask user (`AskUserQuestion`):
 - `floor_tag` — `h|m|l|nofloor`, default `nofloor`.
 - `enabled` — boolean, default true.
 - `http_timeout_ms` — int 5000–30000 or null (default null; omit when not set). Ask only if user wants an AdMob HTTP request cap. Warn-cross-check: must be `<` the consuming placement's `load_timeout_ms` (else SDK WARN — the coroutine wrapper fires before the HTTP cap).
-- `load_timeout_ms` — int 1000–60000 or null (default null; omit when not set; SDK 0.16.0+). Per-unit coroutine load timeout: wins over the consuming placement's `load_timeout_ms` (show-path) and the 10s preload default. Warn-cross-checks: `http_timeout_ms` must be `<` this value when both set; value above a parallel placement's `load_timeout_ms` gets cut by the chain ceiling.
+- `load_timeout_ms` — int 1000–60000 or null (default null; omit when not set; SDK 0.16.0+). Per-unit coroutine load timeout: wins over the consuming placement's `load_timeout_ms` (show-path) and the global preload timeout (`xapp_config.preload.load_timeout_ms`, default 30000). Warn-cross-checks: `http_timeout_ms` must be `<` this value when both set; value above a parallel placement's `load_timeout_ms` gets cut by the chain ceiling.
 - `media_aspect_ratio` — native units ONLY. `any | landscape | portrait | square` (case-insensitive) or null (default null; omit when not set). Ask only when format is `native` and the user wants to constrain media aspect.
 
 NOTE: `meta_config` is only read when `mediation: "META"` (not active at runtime). Do NOT generate it for ADMOB units.

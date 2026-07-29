@@ -8,7 +8,7 @@ NOTE 0.11.5: banner/native ad_units whose AdMob mediation chain in AdMob console
 
 NOTE on mediation: the enum is `ADMOB | MAX | IRONSOURCE | META`, but only `ADMOB` is active at runtime; `MAX`/`IRONSOURCE`/`META` are reserved (META additionally needs a `meta_config` object or the unit is skipped). Keep generating/recommending `ADMOB`.
 
-Optional new ad_unit knobs (0.11.5): `http_timeout_ms` (int 5000–30000 or null; null default; AdMob `setHttpTimeoutMillis`; must be < the consuming placement's `load_timeout_ms`) and `media_aspect_ratio` (NATIVE units only: `any|landscape|portrait|square`, default null). The starter preset omits both (null defaults). New 0.16.0: `load_timeout_ms` (int 1000–60000 or null; per-unit coroutine load timeout — overrides placement `load_timeout_ms` per entry and the 10s preload default; parallel chain ceiling stays the placement's).
+Optional new ad_unit knobs (0.11.5): `http_timeout_ms` (int 5000–30000 or null; null default; AdMob `setHttpTimeoutMillis`; must be < the consuming placement's `load_timeout_ms`) and `media_aspect_ratio` (NATIVE units only: `any|landscape|portrait|square`, default null). The starter preset omits both (null defaults). New 0.16.0: `load_timeout_ms` (int 1000–60000 or null; per-unit coroutine load timeout — overrides placement `load_timeout_ms` per entry and the global preload timeout (`xapp_config.preload.load_timeout_ms`, default 30000); parallel chain ceiling stays the placement's).
 
 ```jsonc
 [
@@ -86,12 +86,13 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
   "firebase_ad_impression_enabled": false,
   "adapter_init_timeout_ms": 0,
   "preload": {
-    "max_concurrent_loads": 3,
+    "max_concurrent_loads": 6,
     "init_delayed_after_ms": 3000,
     "vendor_dedupe": false,
     "vendor_dedupe_spacing_ms": 800,
     "circuit_threshold": 3,
-    "circuit_backoff_sec": 60
+    "circuit_backoff_sec": 60,
+    "load_timeout_ms": 30000
   }
 }
 ```
@@ -137,7 +138,7 @@ AdMob test app ID: `ca-app-pub-3940256099942544~3347511713` (use in AndroidManif
 
 ## Native UI presets (5 named — pick by name)
 
-SDK 0.16.7 supports 7 `template_id` values. Pick template by content shape; the named preset below selects template + color scheme + layout knobs together.
+SDK 0.17.1 supports 7 `template_id` values. Pick template by content shape; the named preset below selects template + color scheme + layout knobs together.
 
 - `card_media_v1` — card with hero media. Renders inline. Use for detail/preview screens.
 - `card_no_media_v1` — card, no media. Renders inline. Use for compact promo / success screens.
@@ -147,7 +148,7 @@ SDK 0.16.7 supports 7 `template_id` values. Pick template by content shape; the 
 - `full_height_v1` (NEW 0.16.x) — inline card that FILLS its host container height (media takes the remaining space) with a countdown → close overlay. NOT modal — the app hosts the view. Use where a native ad should occupy a full screen slot without launching an Activity.
 - `card_compact_v1` (NEW 0.16.x) — icon left, title + 16:9 media stacked beside it, full-width CTA below; "Ad" badge pinned top-left, no body text (media aspect fixed 16:9). Renders inline. Use for dense list rows that still want a media thumbnail.
 
-All native ads in SDK 0.16.7 render with a border (AdMob "Ads disguised as content" policy). Each preset below carries an explicit `border` block matching the card background tone. The border block now also has a `visible` field (default true) alongside `color` + `width_dp`; the presets omit `visible`, so `"visible": true` is the implicit default. Omit the whole block to fall back to SDK default `{visible: true, color: "#E0E0E0", width_dp: 1}`.
+All native ads in SDK 0.17.1 render with a border (AdMob "Ads disguised as content" policy). Each preset below carries an explicit `border` block matching the card background tone. The border block now also has a `visible` field (default true) alongside `color` + `width_dp`; the presets omit `visible`, so `"visible": true` is the implicit default. Omit the whole block to fall back to SDK default `{visible: true, color: "#E0E0E0", width_dp: 1}`.
 
 `ad_badge.visible` does NOT exist in SDK 0.11.9 — badge always renders. Presets do not include the field. `ad_badge.text` accepts only `{"Ad", "Sponsored", "Promoted", "Quảng cáo"}` — any other value normalizes to "Ad" at parse with WARN.
 

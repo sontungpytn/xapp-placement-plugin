@@ -1,6 +1,6 @@
 ---
 name: schema-ref
-description: Print canonical XAppAdKit (xappsdk) JSONC schema reference for SDK 0.16.7 and named UI presets. Use when user asks about xapp_config / xapp_ad_units / xapp_registry / xapp_p_* shape, native ui_config fields, valid format enums, preload_trigger values, capping defaults, or wants to inspect starter ad-unit preset / native UI presets.
+description: Print canonical XAppAdKit (xappsdk) JSONC schema reference for SDK 0.17.1 and named UI presets. Use when user asks about xapp_config / xapp_ad_units / xapp_registry / xapp_p_* shape, native ui_config fields, valid format enums, preload_trigger values, capping defaults, or wants to inspect starter ad-unit preset / native UI presets.
 argument-hint: [schema|presets|all]
 ---
 
@@ -10,7 +10,7 @@ Output canonical XAppAdKit JSONC schema + preset reference. Use when user asks a
 
 ## Steps
 
-1. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.16.7.md` and/or `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/presets.md` based on argument:
+1. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.17.1.md` and/or `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/presets.md` based on argument:
    - `schema` → schema file only
    - `presets` → presets file only
    - `all` (default if no arg) → both
@@ -21,4 +21,4 @@ Output canonical XAppAdKit JSONC schema + preset reference. Use when user asks a
 
 ## Notes
 
-The schema file mirrors `com.xapp.adkit.config.ConfigRepository` DTOs at git tag v0.16.7. Update this reference when SDK version bumps.
+The schema file mirrors `com.xapp.adkit.config.ConfigRepository` DTOs at git tag v0.17.1. Update this reference when SDK version bumps.

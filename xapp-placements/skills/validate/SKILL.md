@@ -1,6 +1,6 @@
 ---
 name: validate
-description: Validate an XAppAdKit (xappsdk) ad placement JSONC config against SDK 0.16.7 schema + admin import rules. Invokes the `xapp-validator` agent and shows its report. Use when user says "validate ad config", "check ad placements", "kiểm tra config xappsdk", "validate <file>.jsonc", or asks for a pre-import safety check on a `*-ad-placements.jsonc` file.
+description: Validate an XAppAdKit (xappsdk) ad placement JSONC config against SDK 0.17.1 schema + admin import rules. Invokes the `xapp-validator` agent and shows its report. Use when user says "validate ad config", "check ad placements", "kiểm tra config xappsdk", "validate <file>.jsonc", or asks for a pre-import safety check on a `*-ad-placements.jsonc` file.
 argument-hint: [path-to-jsonc-file]
 ---
 
@@ -17,7 +17,7 @@ Run the `xapp-validator` agent on a JSONC config file. Be terse.
 2. Invoke the `xapp-validator` agent via the `Task` tool:
    - `subagent_type: xapp-validator`
    - `description: "Validate <path>"`
-   - `prompt: "Validate the xappsdk ad placement config file at <absolute-path>. Apply SDK 0.16.7 schema + admin import rules. Report errors, warnings, and final status."`
+   - `prompt: "Validate the xappsdk ad placement config file at <absolute-path>. Apply SDK 0.17.1 schema + admin import rules. Report errors, warnings, and final status."`
 
 3. Print agent's report verbatim to user. Add no commentary unless agent reported errors — in that case append a one-line action hint:
    - HARD errors → "Fix above before admin import."
