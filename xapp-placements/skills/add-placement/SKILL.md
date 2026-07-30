@@ -14,7 +14,7 @@ If user passed a path argument → use it. Else `Bash: ls *-ad-placements.jsonc 
 
 ## Step 1 — Load file + schema
 
-Read target file. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.17.1.md` + `presets.md`.
+Read target file. Read `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.18.0.md` + `presets.md`.
 
 Parse (mentally — no actual JSON parser needed since we Edit text):
 - existing `xapp_ad_units` IDs + their `format`
