@@ -1,8 +1,58 @@
-# XAppAdKit JSONC Schema — SDK 0.17.1
+# XAppAdKit JSONC Schema — SDK 0.18.0
 
-Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.17.1` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
+Source of truth: `com.xapp.adkit.config.ConfigRepository` parser DTOs at git tag `v0.18.0` of `com.xantus:x-app-ad-kit-sdk`. Schema mirrors the `@SerializedName` JSON keys + parse-time coercion in that file. Cross-project parity invariant: native `template_id` set MUST match `nativeTemplateIdEnum` in `xapp-sdk-web-admin/app/lib/schemas.ts`.
 
 File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadata.
+
+## Changes since 0.17.1 (→ 0.18.0)
+
+- **NEW `xapp_config.noti_permission`** `{ enabled, screen_name, delay_ms }` — which screen asks for
+  `POST_NOTIFICATIONS`. Inert unless `enabled: true` AND `screen_name` is non-blank (SDK `active`
+  predicate); `screen_name` is a name the app passes to `XAppTrackScreen`, `delay_ms` is coerced to
+  [0, 10000] (default 500). Android 13+ only, at most one prompt per process, no persistence. The SDK
+  defers the prompt when a fullscreen ad covers the screen and retries on the next resume, so pairing
+  it with a screen that shows an interstitial is safe but delays the ask.
+- **Nested blocks now degrade field-locally.** `preload` and `noti_permission` are read as raw JSON and
+  converted under their own `runCatching`, so a malformed *block* falls back to that block's default and
+  leaves its siblings alone. Before 0.18.0 one bad nested value reset the whole `xapp_config` — including
+  flipping an `enabled: false` kill-switch back to `true`. A malformed **scalar** (`launch_cooldown_ms: {}`)
+  is still block-wide: it throws while Gson binds the DTO itself.
+
+### Backfill — fields this reference was missing (present in the SDK before 0.18.0)
+
+These were live in earlier SDKs and never documented here. Listed with the version that introduced them:
+
+- `xapp_config.min_cross_fullscreen_interval_sec` (0.16.x) — int, coerced >=0, **defaults to
+  `min_fullscreen_interval_sec`**. Spacing between fullscreens of DIFFERENT formats (appopen → inter).
+  `0` disables the cross-format guard only.
+- `xapp_config.min_fullscreen_interval_max_sec` (0.17.0) — int, defaults to `min_fullscreen_interval_sec`,
+  coerced to `>= min_fullscreen_interval_sec`. When greater than the floor, each interval is re-rolled in
+  `[min, max]` after every fullscreen impression so spacing looks organic. Equal = no randomization.
+- `xapp_config.global_click_cap_daily` (0.17.0) — int, coerced `>= 1`, **absent = disabled**. Once this
+  many ad CLICKS are recorded across ALL placements in a rolling 24h, every `show()` is blocked until the
+  window clears (invalid-traffic protection). Rewarded / rewarded-interstitial exempt. In-memory: resets
+  with the process.
+- `xapp_config.global_impression_cap_daily` (0.17.0) — same shape, app-wide daily impression ceiling.
+- `xapp_ad_units[*].auto_reload_on_failed` (bool, default false) and `reload_after_failed_delay_ms`
+  (long, coerced >=0, default 5000) — retry a failed buffer fill after a delay.
+- `show_config.rotation_max_count` (int, default 0 = unlimited) and `rotation_loading_lead_sec`
+  (int, coerced >=0, default 1) — rotation ceiling and how early the rotation loading overlay appears.
+- `ui_config.rotation_loading` `{ enabled: true, text: "Loading ad…", text_color: "#FFFFFF",
+  background_color: "#CC000000", indicator_visible: true }` — the overlay shown while a rotating native
+  reloads.
+- `ui_config.fullscreen.hide_system_bars` (0.16.10) — bool, **default true**. Hides status + navigation
+  bars while the fullscreen native is up. Omitting it is the same as `true`.
+- `ui_config.collapse_arrow.inset` (2 ints >=0, default `[12, 12]` = [top, horizontal]) and
+  `animation_duration` (long ms, coerced >=0, default 0).
+- `ui_config.ad_info.ad_badge.offset_dp` (2 ints >=0, default `[0, 0]` = offset from the anchored corner).
+
+### REMOVED in the SDK — stop emitting it
+
+- `xapp_config.firebase_ad_impression_enabled` — **the SDK no longer reads this key** (removed when the
+  app stopped emitting `ad_impression` at all; `ad_revenue_rt` carries value/currency instead). The Xantus
+  admin dropped it from its schema too. The generator no longer emits it. Leaving it in a config file is
+  harmless but dead, and the admin now preserves unknown keys, so a stale copy would sit in Remote Config
+  indefinitely — delete it when you touch a config.
 
 ## Changes since 0.16.7 (→ 0.17.1)
 
@@ -39,7 +89,7 @@ File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadat
 
 | Area | Change |
 |---|---|
-| `ui_config.collapse_arrow.targets` | NEW 0.12.6. Array of strings, default `["media"]`. `collapsible_v1` template ONLY. Which sections collapse when the arrow is tapped — subset of `{"media", "cta"}` (case-sensitive). Invalid tokens dropped + WARN; empty after filtering → default `["media"]`; absent → default `["media"]`. NOTE: the arrow lives inside the media section, so `"media"` in targets makes the arrow disappear with it (one-way collapse); `["cta"]` alone keeps the arrow visible. |
+| `ui_config.collapse_arrow.targets` | **REMOVED in 0.18.0 — SDK deleted the field; collapse behavior is fixed (hides media, relocates the CTA into the info row). Delete it from configs.** Historical: NEW 0.12.6. Array of strings, default `["media"]`. `collapsible_v1` template ONLY. Which sections collapse when the arrow is tapped — subset of `{"media", "cta"}` (case-sensitive). Invalid tokens dropped + WARN; empty after filtering → default `["media"]`; absent → default `["media"]`. NOTE: the arrow lives inside the media section, so `"media"` in targets makes the arrow disappear with it (one-way collapse); `["cta"]` alone keeps the arrow visible. |
 | in-app RC defaults (0.12.7) | NOT a JSONC field. SDK 0.12.7 (`feat/rc-defaults-fast-splash`) adds `AppConfig.remoteConfigDefaults` + `ConfigRepository.applyDefaults()` — the host app passes Remote Config defaults at `init()` so first-run splash reads them without blocking on the network fetch. This is an SDK init-API change in app code, NOT a key in the `xapp_*` RC bundle — generator / validator / this schema are unaffected. |
 
 ## Changes since 0.12.3
@@ -51,7 +101,7 @@ File = 1 JSONC bundling 4 Firebase Remote Config keys + `_project` admin metadat
 | Area | Change |
 |---|---|
 | `xapp_ad_units[*].reload_after_show_delay_ms` | NEW 0.12.3. Long ≥0, default 0. Delay (ms) before the reload-after-show buffer refill. `0` = immediate. Effective delay at show time = `max(this, fullscreen auto-delay derived from the placement's min_interval_sec)`. Only meaningful when `auto_reload_on_show: true`. SDK coerces `< 0` → 0 (no upper cap). **Admin import caps it 0..60000** (`z.number().int().min(0).max(60000)`) — values > 60000 REJECTED on import even though the SDK tolerates them. |
-| `xapp_config.firebase_ad_impression_enabled` | NEW 0.12.3. Bool default true. Remote kill-switch — when `false`, `FirebaseBridge` suppresses the `ad_impression` Firebase event; ALL other ad events still emit. Use to avoid double-counting GA4 `totalAdRevenue` when AdMob↔GA4 linking already feeds ad revenue server-side. Admin schema: `z.boolean().default(true)`. (SDK 0.12.x also emits an always-on `ad_revenue` event alongside the gated `ad_impression` — telemetry only, no config key.) |
+| `xapp_config.firebase_ad_impression_enabled` | **REMOVED from the SDK (see 0.18.0 section) — do not emit.** Historical: NEW 0.12.3, bool default true. Remote kill-switch — when `false`, `FirebaseBridge` suppresses the `ad_impression` Firebase event; ALL other ad events still emit. Use to avoid double-counting GA4 `totalAdRevenue` when AdMob↔GA4 linking already feeds ad revenue server-side. Admin schema: `z.boolean().default(true)`. (SDK 0.12.x also emits an always-on `ad_revenue` event alongside the gated `ad_impression` — telemetry only, no config key.) |
 | `xapp_p_<name>.ui_config_triggered` | NEW 0.12.3. Optional second `ui_config` (SAME shape as `ui_config`, see §6), default null/absent. Used when the app renders the native ad with `triggered = true` (e.g. after a user action on the same screen) — SDK calls `resolvedUiConfig(triggered)`: `true` prefers `ui_config_triggered`, falling back to `ui_config`; `false` always uses `ui_config`. Null → triggered renders fall back to `ui_config`. NATIVE placements only. |
 | analytics event names | NEW 0.12.1 (telemetry, NOT a JSONC field). `screen_show` → `x_app_screen_show`, `screen_exit` → `x_app_screen_exit`. `trackScreenShow`/`trackScreenExit` API + bundle keys + screen-preload matching UNCHANGED. Downstream GA4/BQ dashboards on the old event names must migrate. No config-file impact. |
 
@@ -150,6 +200,11 @@ Admin rejects import if `id` not pre-registered or `package_name` mismatches the
   "event_sink_enabled": true,       // bool, default true. false = no AdEvent emission
   "debug_mode": false,              // bool, default false
   "min_fullscreen_interval_sec": 30,// int default 30, coerced >=0. Cross-placement fullscreen spacing. 0 disables.
+  "min_cross_fullscreen_interval_sec": 30, // int coerced >=0, DEFAULTS to min_fullscreen_interval_sec.
+                                    //   Spacing between DIFFERENT formats (appopen -> inter). 0 disables only the cross guard.
+  "min_fullscreen_interval_max_sec": 30,   // NEW 0.17.0. int, defaults to min_fullscreen_interval_sec, coerced >= it.
+                                    //   > floor => interval re-rolled in [min, max] after each impression (organic spacing).
+                                    //   Equal = no randomization.
   "launch_cooldown_ms": 4000,       // long default 4000, coerced >=0. Cooldown after READY before INTERSTITIAL show(). 0 disables.
   "splash_min_duration_ms": 1000,   // NEW. long default 1000, bounds [0,15000] (else clamp to default).
   "mute_ad_video": false,           // NEW. bool default false. Process-wide AdMob video mute (one-way per session).
@@ -159,9 +214,18 @@ Admin rejects import if `id` not pre-registered or `package_name` mismatches the
                                     //   reuse: a placement borrows a buffered ad ONLY from units listed in its reuse_chain
                                     //   (list-order, same-format), at the REUSE tier. ALL formats. Empty reuse_chain = no
                                     //   borrow. Gated by late_reuse_enabled=true. Revenue stays with origin unit.
-  "firebase_ad_impression_enabled": true, // NEW 0.12.3. bool default true. Kill-switch: false suppresses the ad_impression
-                                    //   Firebase event ONLY (all other ad events still emit). Avoid GA4 totalAdRevenue
-                                    //   double-count when AdMob<->GA4 linking already feeds revenue server-side.
+  // REMOVED: firebase_ad_impression_enabled — the SDK no longer reads it (app stopped emitting
+  //   ad_impression; ad_revenue_rt carries value/currency). Admin dropped it too. Do not emit.
+  // "global_click_cap_daily": 100,  // NEW 0.17.0. int coerced >=1. ABSENT = disabled (recommended default).
+                                    //   Blocks every show() once this many CLICKS land across ALL placements in a rolling
+                                    //   24h — invalid-traffic protection. Rewarded/rewinter exempt. In-memory (resets with process).
+  // "global_impression_cap_daily": 200, // NEW 0.17.0. same shape. App-wide daily impression ceiling.
+  "noti_permission": {              // NEW 0.18.0. Which screen asks for POST_NOTIFICATIONS. Android 13+ only.
+    "enabled": false,               //   bool default false. Inert unless true AND screen_name non-blank.
+    "screen_name": "",              //   name the app passes to XAppTrackScreen (e.g. "onboarding_1"). Blank = inert.
+    "delay_ms": 500                 //   long coerced [0,10000], default 500. Wait after screen entry before prompting.
+  },                                //   One prompt per process, no persistence. Deferred (not dropped) if a fullscreen ad covers
+                                    //   the screen; retried on the next resume. Android allows ~2 prompts per install EVER.
   "adapter_init_timeout_ms": 0,     // NEW post-0.13.0. int ms default 0, coerced [0,30000]. Max wait for MobileAds.initialize
                                     //   (all adapters) before first ad request. 0 = wait fully (prior behavior); >0 = request
                                     //   ads after timeout while adapters finish in background. SDK GlobalConfig.adapterInitTimeoutMs.
@@ -212,6 +276,8 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
                                   //   No-op for units delegated under use_admob_startpreload.
   },
   "auto_reload_on_show": true,    // bool, default true
+  "auto_reload_on_failed": false, // bool, default false. Retry a FAILED buffer fill.
+  "reload_after_failed_delay_ms": 5000, // long coerced >=0, default 5000. Delay before that retry.
   "reload_after_show_delay_ms": 0,// NEW 0.12.3. long >= 0 (coerced), default 0 (=immediate). Delay before reload-after-show
                                   //   buffer refill. Effective = max(this, fullscreen auto-delay from placement min_interval_sec).
                                   //   Only meaningful when auto_reload_on_show=true. Admin caps 0..60000 (rejects > 60000).
@@ -266,6 +332,8 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
   },
   "show_config": {
     "capping": { "hourly": 4, "daily": 10, "session": 5 },  // each default Int.MAX (unlimited)
+    // "rotation_max_count": 0,     // int, default 0 = unlimited rotations.
+    // "rotation_loading_lead_sec": 1, // int coerced >=0, default 1. How early the rotation loading overlay appears.
     "min_interval_sec": 90,         // int. 0 = none
     "rotation_interval_sec": 45,    // int. native-only. 0 = no rotation
     "modal_loading": {              // optional. UI ONLY since 0.12.1. for inter/reward/rewinter (NOT banner/native/appopen)
@@ -334,17 +402,32 @@ Cross-rules enforced by the SDK parser:
     "color": "#E0E0E0",             // hex, default #E0E0E0
     "width_dp": 1                   // int, default 1, coerced >=1
   },
-  "collapse_arrow": {               // NEW. collapsible_v1 template only
-    "border_width": 0,              // int >=0, default 0 (0 = no border)
-    "border_color": "#000000",      // hex, drawn only when border_width > 0
+  "collapse_arrow": {               // collapsible_v1 template only. DEFAULTS CORRECTED for 0.18.0 —
+                                    //   this block used to document the pre-0.16 values.
+    "border_width": 1,              // int >=0, default 1 (0 = no border)
+    "border_color": "#FFFFFF",      // hex, default #FFFFFF. Drawn only when border_width > 0
     "border_radius": 20,            // int >=0, default 20
-    "icon_color": "#000000",        // hex, default #000000
-    "icon_size": 16,                // int >=1, default 16
-    "container_size": 20,           // int >=1, default 20
-    "container_bg_color": "#00000000", // hex, default transparent
-    "container_shadow": false,      // bool, default false
-    "targets": ["media"]            // NEW 0.12.6. string[] subset of {"media","cta"}, default ["media"].
-                                    //   sections to collapse on arrow tap. invalid tokens dropped+WARN; empty->default.
+    "icon_color": "#FFFFFF",        // hex, default #FFFFFF
+    "icon_size": 20,                // int >=1, default 20
+    "container_size": 28,           // int >=1, default 28
+    "container_bg_color": "#66000000", // hex, default #66000000 (scrim — keeps a white icon readable on any card)
+    "container_shadow": false,      // bool, default false. Only renders visibly when the bg is opaque
+    "position": "left",             // "left" (default) | "right" — which top corner of the CARD it anchors to
+    "inset": [12, 12],              // 2 ints >=0, default [12, 12] = [top, horizontal] offset from that corner
+    "animation_duration": 0         // long ms coerced >=0, default 0. Media height-accordion duration; 0 = instant
+                                    // REMOVED: "targets" — collapse behavior is fixed in the SDK since 0.16.x
+                                    //   (hides media + relocates the CTA into the info row). Delete it if present.
+  },
+  "fullscreen": {                   // fullscreen_hero_v1 template ONLY (others ignore)
+    "hide_system_bars": true,       // NEW 0.16.10. bool, default true. Hides status + navigation bars while the
+                                    //   fullscreen native is up. Omitting it == true.
+    "info_bg": "#00000000",         // hex, default transparent — surface behind icon/title/body/CTA
+    "action_container": {           // top-anchored slot: countdown morphs into the close icon
+      "position": "right",          //   "right" (default) | "left"
+      "duration_sec": 5,            //   int [0..15], default 5. Meta video policy floor = 5
+      "auto_close": false,          //   bool, default false. Auto-dismiss when the timer elapses
+      "close_button": { "visible": true, "icon": "x" } // icon: "x" (default) | "arrow_forward"
+    }
   },
   "banner": {                       // NEW 0.12.0. banner_horizontal_v1 template ONLY (others ignore)
     "height_dp": 125,               // int default 125, coerced >=1. WARN when < 64 (clip risk).
@@ -372,7 +455,9 @@ Cross-rules enforced by the SDK parser:
       "background_color": null,     // null OR hex; null/invalid = fixed default #1E88E5 (0.16.x; was per-template)
       "text_color": null,           // null OR hex; null/invalid = fixed default #FFFFFF
       "text": "Ad",                 // whitelist: "Ad"|"Sponsored"|"Promoted"|"Quảng cáo" (else -> "Ad" + WARN)
-      "border_radius": [4, 4, 4, 4] // NEW 0.16.x. [TL,TR,BR,BL] ints >=0, default [4,4,4,4]. card_compact_v1 pins [8,0,8,0].
+      "border_radius": [4, 4, 4, 4] // NEW 0.16.x. [TL,TR,BR,BL] ints >=0, default [4,4,4,4]. card_compact_v1 pins [8,0,8,0].,
+      "anchor": "card",             // "card" (default) | "media" — which box the badge pins to
+      "offset_dp": [0, 0]           // 2 ints >=0, default [0, 0] = offset from the anchored corner
     }
   },
   "ad_metadata": {
@@ -452,15 +537,21 @@ HARD ERRORS (admin will reject):
 38. NEW 0.12.0: `ui_config.banner.height_dp` / `banner.padding_dp` present AND not an integer, or negative (`height_dp` coerced ≥1, `padding_dp` coerced ≥0; admin should reject non-int / negative). ABSENT = OK (defaults 125 / 12).
 39. NEW 0.12.0: `ui_config.ad_info.ad_icon.size_dp` present AND not an integer or < 1 (SDK coerces ≥1 when set; null = per-template default). ABSENT / null = OK.
 40. NEW 0.12.3: `xapp_ad_units[*].reload_after_show_delay_ms` present AND not an int / negative / **> 60000** (SDK coerces ≥0 with no upper cap; admin `z.number().int().min(0).max(60000)` REJECTS > 60000). ABSENT = OK (default 0).
-41. NEW 0.12.3: `xapp_config.firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean()`). ABSENT = OK (default true).
+41. REMOVED 0.18.0: `xapp_config.firebase_ad_impression_enabled` present at all — SDK no longer reads it, admin dropped it. Recommend deleting (the admin preserves unknown keys, so a stale copy persists in RC).
 42. NEW 0.12.3: `xapp_p_<name>.ui_config_triggered` present on a NON-native placement (only consumed for NATIVE renders) — admin/SDK ignore it for non-native; flag. Its inner shape is validated by the SAME `ui_config` rules (rules 19–26, 29–30, 38–39) — apply all of them to `ui_config_triggered` too.
-43. NEW 0.12.6: `ui_config.collapse_arrow.targets` present AND not an array of strings, OR contains a token outside `{"media", "cta"}` (SDK drops invalid tokens + WARN, empty → default `["media"]`; admin should reject non-subset). ABSENT = OK (default `["media"]`).
+43. REMOVED 0.18.0: `ui_config.collapse_arrow.targets` present at all — SDK deleted the field (see rule 54). Historical rule was: present AND not an array of strings, OR contains a token outside `{"media", "cta"}` (SDK drops invalid tokens + WARN, empty → default `["media"]`; admin should reject non-subset). ABSENT = OK (default `["media"]`).
 44. NEW 0.13.0: `xapp_p_<name>.reuse_chain` present AND not an object `{ entries: [...] }`, OR an `entries` item missing/blank `ad_unit_id` (admin `z.object({ entries: z.array(adChainEntrySchema).default([]) })`). Unknown `ad_unit_id` is dropped by the SDK (like `ad_chain`) — flag as WARN, not error. ABSENT / `{entries:[]}` = OK.
 45. NEW 0.13.0: `xapp_config.cross_unit_reuse_enabled` already covered by rule 37 (boolean) — no change.
 46. NEW post-0.13.0: `xapp_config.adapter_init_timeout_ms` present AND not an integer, or outside [0, 30000] (admin `z.number().int().min(0).max(30000).default(0)`; SDK coerces). ABSENT = OK (default 0). Generator emits `0` (wait fully = prior behavior) — `0` is expected, not an error.
 47. NEW (SDK 0.15.0): `xapp_ad_units[*].preload_trigger_by_segment` present AND (a) any key blank/empty (SDK drops blank keys with WARN; admin `z.record(z.string().min(1), preloadTriggerEnum)` rejects), or (b) any value not a valid trigger after alias resolution — same enum + legacy/unknown coercion as `preload_trigger` (rule 8): legacy `"INIT"` → `INIT_DELAYED` + WARN; unknown → `INIT_DELAYED` + WARN in the SDK; admin `z.enum` rejects the raw unknown on import. ABSENT / `{}` = OK (no override; effective trigger = `preload_trigger`).
 48. NEW (SDK 0.17.1): `xapp_config.preload.load_timeout_ms` present AND not an integer, or outside [1000, 60000] (1000 and 60000 themselves are valid) (SDK `coerceIn(1000, 60000)` + WARN; admin `z.number().int().min(1000).max(60000).default(30000)` rejects on import). ABSENT = OK (default 30000). Applies to the PRELOAD path only.
-49. NEW (SDK 0.18.0): `preload_trigger_by_segment` value must be EITHER a trigger string (legacy form, = `priority: 0`) OR an object `{trigger, priority}` (`priority` int, default 0). The SDK's primitive branch (`JsonElement.isJsonPrimitive`) matches JSON booleans and numbers too, not only strings — a value like `{"whale": true}` is NOT dropped: it goes through `asString` → `"true"` → unknown-trigger WARN → falls back to `INIT_DELAYED` with `priority: 0`, and the key survives. Only an array or `null` actually gets dropped + WARN (`ConfigRepository.kt` `AdUnitDto.toAdUnit()`, the `else` branch). Admin's `z.union([preloadTriggerEnum, z.object({trigger: preloadTriggerEnum, priority: z.number().int().default(0)})])` is stricter — it hard-rejects ANY non-string/non-object value (booleans and numbers included) on import, which is the safe direction. `priority` present but non-numeric → SDK coerces to `0` + WARN; admin rejects. Fractional `priority` (e.g. `1.5`) → SDK silently truncates via `JsonPrimitive.asInt` (`1.5` → `1`) with NO warn at all; admin's `z.number().int()` hard-rejects it on import — an operator can produce a value the SDK would accept-and-truncate but the admin blocks, so the two sides disagree here. `priority` missing/null = OK (defaults `0`).
+49. NEW 0.18.0: `xapp_config.noti_permission` present AND not an object; or `.enabled` not boolean; or `.screen_name` not a string; or `.delay_ms` not an integer / outside [0, 10000].
+50. NEW 0.18.0: `noti_permission.enabled: true` with a blank or absent `screen_name` — inert, asks nobody. Warn.
+51. NEW 0.17.0: `global_click_cap_daily` / `global_impression_cap_daily` present AND not an integer or `< 1` (SDK coerces up to 1, so `0` blocks every show after ONE event). ABSENT = disabled = the safe default.
+52. NEW 0.17.0: `min_fullscreen_interval_max_sec` < `min_fullscreen_interval_sec` (SDK coerces up to the floor).
+53. NEW 0.16.x: `min_cross_fullscreen_interval_sec` < 0. ABSENT defaults to `min_fullscreen_interval_sec`, not 0.
+54. REMOVED 0.18.0: `ui_config.collapse_arrow.targets` present — SDK removed it; collapse behavior is fixed. Recommend deleting.
+55. NEW (SDK 0.18.0): `preload_trigger_by_segment` value must be EITHER a trigger string (legacy form, = `priority: 0`) OR an object `{trigger, priority}` (`priority` int, default 0). The SDK's primitive branch (`JsonElement.isJsonPrimitive`) matches JSON booleans and numbers too, not only strings — a value like `{"whale": true}` is NOT dropped: it goes through `asString` → `"true"` → unknown-trigger WARN → falls back to `INIT_DELAYED` with `priority: 0`, and the key survives. Only an array or `null` actually gets dropped + WARN (`ConfigRepository.kt` `AdUnitDto.toAdUnit()`, the `else` branch). Admin's `z.union([preloadTriggerEnum, z.object({trigger: preloadTriggerEnum, priority: z.number().int().default(0)})])` is stricter — it hard-rejects ANY non-string/non-object value (booleans and numbers included) on import, which is the safe direction. `priority` present but non-numeric → SDK coerces to `0` + WARN; admin rejects. Fractional `priority` (e.g. `1.5`) → SDK silently truncates via `JsonPrimitive.asInt` (`1.5` → `1`) with NO warn at all; admin's `z.number().int()` hard-rejects it on import — an operator can produce a value the SDK would accept-and-truncate but the admin blocks, so the two sides disagree here. `priority` missing/null = OK (defaults `0`).
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
@@ -477,7 +568,7 @@ WARNINGS:
 - legacy `parallel_load` boolean present on `ad_chain` (migrate to `load_strategy`).
 - legacy `provider` field on placement or `meta_config` on an ADMOB unit (SDK drops silently — strip).
 - `collapse_arrow` present on a non-`collapsible_v1` template (SDK ignores).
-- NEW 0.12.6: `collapse_arrow.targets` contains tokens outside `{"media", "cta"}` — SDK drops the invalid entries + WARN (empty result → default `["media"]`).
+- REMOVED 0.18.0 (was NEW 0.12.6): `collapse_arrow.targets` contains tokens outside `{"media", "cta"}` — SDK drops the invalid entries + WARN (empty result → default `["media"]`).
 - `skip_delay_sec` set on a non-`fullscreen_hero_v1` template (SDK ignores for inline renderers).
 - NEW 0.11.8: placement `reuse_strategy` ≠ `own_first` (or `xapp_config.cross_unit_reuse_enabled: true`) while `xapp_config.late_reuse_enabled: false` — reuse tiers are disabled, so the strategy / cross-unit borrow is a no-op (gated by `late_reuse_enabled`).
 - NEW 0.13.0: `reuse_chain` entry references a unit whose `format` differs from the placement's format (from `ad_chain.entries[0]`) — borrow skips it at runtime (same-format only); likely a config mistake.

@@ -1,7 +1,7 @@
 ---
 name: xapp-validator
 description: |
-  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.17.1 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
+  Use PROACTIVELY after any write to a `<name>-ad-placements.jsonc` (or any file containing top-level `xapp_config` / `xapp_ad_units` / `xapp_registry` keys). Validates the file against XAppAdKit SDK 0.18.0 schema + admin import rules. Also triggered explicitly via `/xapp-placements:validate`. Examples:
 
   <example>
   Context: User just ran `/xapp-placements:create-config` and the skill wrote `controlkit-ad-placements.jsonc`.
@@ -15,7 +15,7 @@ description: |
   <example>
   Context: User edits a placement block manually and asks for review.
   user: "Added a new `inter_unlock_charge` placement. Check it."
-  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.17.1 schema."
+  assistant: "I'll use the xapp-validator agent to check the file against SDK 0.18.0 schema."
   <commentary>
   Manual edits to xapp config also warrant validation.
   </commentary>
@@ -27,7 +27,7 @@ You are **xapp-validator** — autonomous validator for XAppAdKit (xappsdk) ad p
 
 ## Scope
 
-Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.17.1 (`com.xantus:x-app-ad-kit-sdk:0.17.1`).
+Validates files structured as `<app_code>-ad-placements.jsonc` (or similar) containing top-level keys: `_project`, `xapp_config`, `xapp_ad_units`, `xapp_registry`, `xapp_p_*`. Schema source = SDK 0.18.0 (`com.xantus:x-app-ad-kit-sdk:0.18.0`).
 
 ## Inputs
 
@@ -38,7 +38,7 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 1. Read the file.
 2. Strip JSONC comments (`//...` line + `/* ... */` block) into a temp string for parsing logic, but keep line numbers for error reporting. (Conceptual — you don't actually run a parser; you reason over the text.)
 3. Walk the rules below. For each violation, record: severity (ERROR / WARN), location (key path + approx line), message, fix hint.
-4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.17.1.md`. Use it as authoritative truth on any field you're unsure about.
+4. Also read the schema reference at `$CLAUDE_PLUGIN_ROOT/skills/schema-ref/references/schema-0.18.0.md`. Use it as authoritative truth on any field you're unsure about.
 
 ## Rules — HARD ERRORS (admin will reject)
 
@@ -62,7 +62,10 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NOTE 0.17.1**: `preload.max_concurrent_loads` default is now `6` (was `3`), range still [1, 8]. Not an error in any case — informational when the field is absent or still set to 3.
 - **NEW 0.11.8**: `cross_unit_reuse_enabled` present AND not boolean (default true). Allows a placement to borrow a buffered fullscreen ad from a unit it does not reference (matched by AdFormat); gated by `late_reuse_enabled=true`.
 - **NOTE 0.11.8**: `preload.vendor_dedupe` default is now `false` (was `true`). Not an error in any case — informational when the field is absent.
-- **NEW 0.12.3**: `firebase_ad_impression_enabled` present AND not boolean (admin `z.boolean().default(true)`). ABSENT = OK (SDK/admin schema default true). NOTE: generator emits `false` by Xantus convention (AdMob↔GA4 server-side revenue) — `false` is expected, only a type mismatch is an error.
+- **NEW 0.18.0**: `noti_permission` present AND not an object, or `noti_permission.enabled` not boolean, or `screen_name` not a string, or `delay_ms` not an integer / outside [0, 10000] (SDK `coerceIn(0, 10_000)`; admin `z.number().int().min(0).max(10_000).default(500)`). ABSENT = OK (inert).
+- **NEW 0.17.0**: `global_click_cap_daily` / `global_impression_cap_daily` present AND not an integer, or `< 1` (SDK `coerceAtLeast(1)` — a `0` therefore becomes `1`, which blocks every show() after ONE click/impression). ABSENT = OK and is the safe default (guard disabled).
+- **NEW 0.17.0**: `min_fullscreen_interval_max_sec` present AND `< min_fullscreen_interval_sec` (SDK coerces up to the floor, so the value is a lie in the file).
+- **NEW 0.16.x**: `min_cross_fullscreen_interval_sec` present AND `< 0`. ABSENT = OK — it defaults to `min_fullscreen_interval_sec`, NOT to 0.
 - **NEW (post-0.13.0)**: `adapter_init_timeout_ms` present AND not an integer, or outside [0, 30000] (admin `z.number().int().min(0).max(30000).default(0)`; SDK coerces). ABSENT = OK (default 0). Generator emits `0` (wait fully = prior behavior) — `0` is expected, not an error.
 
 ### `xapp_ad_units` (each entry)
@@ -179,7 +182,11 @@ The invoker passes a file path. If absent, look for `*-ad-placements.jsonc` in C
 - **NEW 0.12.0**: `preload_on_screens[].delay_ms` outside 0..60000 — SDK coerces to nearest bound.
 - **NEW 0.12.0**: `ui_config.ad_media.aspect_ratio` = `auto` is now valid (gains alongside existing `\d+:\d+` values) — do NOT flag.
 - **NEW 0.12.3**: `reload_after_show_delay_ms > 0` AND `auto_reload_on_show: false` on the same ad_unit — the delay is a no-op (refill never auto-fires). Recommend removing one or the other.
-- **NEW 0.12.3**: `firebase_ad_impression_enabled: true` present — INFO, not an error. Xantus default is `false` (AdMob↔GA4 linking pushes ad revenue server-side; client-side `ad_impression` off to avoid GA4 `totalAdRevenue` double-count). `true` is valid only when a project lacks the AdMob↔GA4 link and needs the client-side event — confirm intent. `false` (or absent-but-emitted-false by the generator) = expected, do NOT flag.
+- **REMOVED 0.18.0**: `firebase_ad_impression_enabled` present at all — the SDK no longer reads this key and the admin dropped it from its schema. Recommend deleting it: the admin now preserves unknown keys, so a stale copy would sit in Remote Config forever.
+- **REMOVED 0.18.0**: `ui_config.collapse_arrow.targets` present — the SDK removed it; collapse behavior is fixed (hides media, relocates the CTA into the info row). Recommend deleting.
+- **NEW 0.18.0**: `noti_permission.enabled: true` with a blank/absent `screen_name` — inert, so nobody is ever asked. Almost certainly a mistake.
+- **NEW 0.18.0**: `noti_permission.screen_name` set to a screen that also shows a fullscreen ad (an `xapp_p_*` whose placement fires on the same screen) — the SDK defers the prompt while the ad covers the screen and retries on the next resume, so the ask still happens but later than the config implies. Worth confirming the screen choice.
+- **NEW 0.18.0**: `noti_permission` configured while no `xapp_p_*` uses that screen name in `preload_on_screens` — cannot be verified from the config alone (screen names come from app code), so mention it only as a reminder that the app must pass this exact name to `XAppTrackScreen`.
 - **NEW 0.12.3**: `ui_config_triggered` present but byte-identical to `ui_config` — redundant (triggered render would look the same); recommend dropping it unless intentional.
 - `show_config.modal_loading.max_wait_ms` present — deprecated since 0.12.1: it backfills `max_show_ms` plus both `timing_config.max_wait_*` budgets. Recommend replacing with `max_show_ms` + the two explicit budgets.
 - `timing_config.load_timeout_ms` > `max_wait_live_load_ms` when the latter is > 0 — the chain ceiling is clamped down to the budget, so a slow first entry can consume it and later entries never run.
@@ -202,7 +209,7 @@ Then summary:
 xapp-validator — <file>
 Errors:   <N>
 Warnings: <M>
-SDK:      0.17.1
+SDK:      0.18.0
 Status:   <BLOCK_IMPORT | OK_WITH_WARNINGS | CLEAN>
 ─────────────────────────────────────
 ```
