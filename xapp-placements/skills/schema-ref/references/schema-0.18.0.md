@@ -71,6 +71,7 @@ These were live in earlier SDKs and never documented here. Listed with the versi
 | Native default text/spacing (CHANGED 0.16.5) | `ad_title` default font drops **16 → 14sp**, `ad_body` **14 → 12sp**, `ui_config.item_spacing` **8 → 6dp**. Applies to ALL native templates; explicit RC values still override. Parser/admin defaults updated to match. |
 | `ui_config.item_spacing` | Existing field (gap in dp between stacked groups — media/info/cta, in `layout_order`). Int ≥0, **default now 6** (was 8). Admin schema: `z.number().int().min(0).default(6)`. |
 | `xapp_ad_units[*].preload_trigger_by_segment` | NEW 0.15.0. Optional map `{ "<segment>": "<trigger>" }` overriding `preload_trigger` per user segment. Keys must be non-blank (SDK drops blank keys + WARN; admin `z.record(z.string().min(1), preloadTriggerEnum)` rejects blank). Values use the SAME enum + alias resolution as `preload_trigger` (`INIT_CRITICAL \| INIT_DELAYED \| LAZY \| SCREEN`, case-insensitive; legacy `INIT`→`INIT_DELAYED`). Absent / `{}` = OK (no override; effective trigger falls back to `preload_trigger`). |
+| Multi-segment (NEW 0.18.0) | A user now holds a SET of segment tags, not one. `xapp_p_*.segments` matches OR (any listed tag hits — no AND). SDK derives acquisition tags itself from Adjust attribution: `organic`, or `ua_traffic` plus `ua_traffic_<network>` (e.g. `ua_traffic_google`) — no operator-side mapping to configure. Kill-switch `xapp_config.segment_attribution_enabled` (bool, default true). `xapp_ad_units[*].preload_trigger_by_segment` values now also accept `{trigger, priority}` (int, default 0) alongside the existing bare-string form (= `priority: 0`); when several tags hit one unit, highest `priority` wins, ties resolve to the alphabetically first key (SDK WARN only if the tied keys' triggers differ). Admin: `z.record(z.string().min(1), z.union([preloadTriggerEnum.transform(t => ({trigger: t, priority: 0})), z.object({trigger: preloadTriggerEnum, priority: z.number().int().default(0)})]))`. |
 | `xapp_ad_units[*].load_timeout_ms` | NEW 0.16.0. Int, default null. Range 1000–60000; out-of-range → null + WARN. Per-unit coroutine load timeout — overrides the consuming placement's `load_timeout_ms` per chain entry (show-path) and the global preload timeout (`xapp_config.preload.load_timeout_ms`, default 30000). Parallel chains: the chain ceiling stays the placement's `load_timeout_ms`. See the field-table rows below (carried from 0.16.0). |
 | `xapp_p_*.ad_chain.entries[*].enable_live_load` | NEW 0.16.0 (per entry). Bool, default **true** (existing behavior). Set false to exclude THIS entry from show-path live-load (OWN_LOAD tier + parallel_auction floor-wait), except the lazy carveout. Per-entry — NOT a placement-level `ad_chain.enable_live_load`. See the field-table row below (carried from 0.16.0). |
 
@@ -262,12 +263,17 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
   "preload_trigger": "INIT_DELAYED", // enum INIT_CRITICAL | INIT_DELAYED | LAZY | SCREEN. DEFAULT INIT_DELAYED.
                                   //   legacy "INIT"->INIT_DELAYED (WARN); unknown->INIT_DELAYED+WARN.
                                   //   SCREEN (NEW 0.12.0): no init preload; buffer fills on trackScreenShow() matching preload_on_screens. Mutually exclusive with INIT_*/LAZY.
-  "preload_trigger_by_segment": {  // NEW (SDK 0.15.0). optional. map<segment, trigger enum>.
-                                  //   e.g. "return_user": "INIT_CRITICAL", "new_user": "INIT_DELAYED"
-                                  //   Effective trigger at bootstrap = preload_trigger_by_segment[userSegment] ?? preload_trigger.
-                                  //   Values use the same enum + legacy/unknown coercion as preload_trigger above. Blank keys dropped.
-                                  //   Absent/empty = no override (default). Lets one unit (one vendor_id) preload eager for some
-                                  //   segments and lazy for others. No-op for units delegated under use_admob_startpreload.
+  "preload_trigger_by_segment": {  // optional. map<segment, trigger | {trigger, priority}>.
+                                  //   Legacy form: "return_user": "INIT_CRITICAL"  (= priority 0)
+                                  //   Object form: "ua_traffic_google": { "trigger": "INIT_CRITICAL", "priority": 10 }
+                                  //   A user holds SEVERAL tags at once, so several keys can hit: highest
+                                  //   priority wins; ties resolve to the alphabetically first key — WARN only
+                                  //   if the tied keys carry different triggers (give overlapping rows distinct
+                                  //   priorities). No hit -> preload_trigger. Trigger values use the same enum +
+                                  //   legacy/unknown coercion as preload_trigger above. Blank keys and non-string/
+                                  //   non-object values (e.g. arrays) dropped (WARN); non-numeric priority -> 0
+                                  //   (WARN); missing/null priority -> 0 (no warn). Absent/empty = no override.
+                                  //   No-op for units delegated under use_admob_startpreload.
   },
   "auto_reload_on_show": true,    // bool, default true
   "auto_reload_on_failed": false, // bool, default false. Retry a FAILED buffer fill.
@@ -346,7 +352,10 @@ Each entry = one ad unit. Pool-wide unique `id` AND unique `vendor_id`.
     "max_wait_live_load_ms": 3500   // long. default 3500. OWN_LOAD live-load budget, spinner on or off.
                                     //   0 = unbounded. clamps load_timeout_ms down when smaller.
   },
-  "segments": [],                   // List<String>. [] or ["*"] = all users
+  "segments": [],                   // List<String>. [] or ["*"] = all users. Matching is OR:
+                                    //   the placement is eligible when the user holds ANY listed tag.
+                                    //   SDK-set tags: new_user | return_user (lifecycle, app-driven),
+                                    //   organic | ua_traffic + ua_traffic_<network> (attribution, SDK-derived).
   "reuse_strategy": "own_first",    // NEW 0.11.8. enum own_first | reuse_before_load | reuse_first. default own_first.
                                     //   show() tier order: own_first=OWN_BUFFER>OWN_PENDING>REUSE>OWN_LOAD (current);
                                     //   reuse_before_load=OWN_BUFFER>REUSE>OWN_PENDING>OWN_LOAD; reuse_first=REUSE>OWN_BUFFER>OWN_PENDING>OWN_LOAD.
@@ -542,6 +551,7 @@ HARD ERRORS (admin will reject):
 52. NEW 0.17.0: `min_fullscreen_interval_max_sec` < `min_fullscreen_interval_sec` (SDK coerces up to the floor).
 53. NEW 0.16.x: `min_cross_fullscreen_interval_sec` < 0. ABSENT defaults to `min_fullscreen_interval_sec`, not 0.
 54. REMOVED 0.18.0: `ui_config.collapse_arrow.targets` present — SDK removed it; collapse behavior is fixed. Recommend deleting.
+55. NEW (SDK 0.18.0): `preload_trigger_by_segment` value must be EITHER a trigger string (legacy form, = `priority: 0`) OR an object `{trigger, priority}` (`priority` int, default 0). The SDK's primitive branch (`JsonElement.isJsonPrimitive`) matches JSON booleans and numbers too, not only strings — a value like `{"whale": true}` is NOT dropped: it goes through `asString` → `"true"` → unknown-trigger WARN → falls back to `INIT_DELAYED` with `priority: 0`, and the key survives. Only an array or `null` actually gets dropped + WARN (`ConfigRepository.kt` `AdUnitDto.toAdUnit()`, the `else` branch). Admin's `z.union([preloadTriggerEnum, z.object({trigger: preloadTriggerEnum, priority: z.number().int().default(0)})])` is stricter — it hard-rejects ANY non-string/non-object value (booleans and numbers included) on import, which is the safe direction. `priority` present but non-numeric → SDK coerces to `0` + WARN; admin rejects. Fractional `priority` (e.g. `1.5`) → SDK silently truncates via `JsonPrimitive.asInt` (`1.5` → `1`) with NO warn at all; admin's `z.number().int()` hard-rejects it on import — an operator can produce a value the SDK would accept-and-truncate but the admin blocks, so the two sides disagree here. `priority` missing/null = OK (defaults `0`).
 
 WARNINGS:
 - `buffer_size` > 5 (excessive memory).
@@ -553,6 +563,7 @@ WARNINGS:
 - ad_badge `text` not in whitelist (SDK normalizes to "Ad" + WARN).
 - `use_admob_startpreload: true` AND a delegated AdMob fullscreen unit sets `reload_interval_sec > 0` / `max_reload_count > 0` / `auto_reload_on_show: false` / `preload_trigger` ≠ INIT_CRITICAL (those knobs become no-ops — SDK WARN).
 - NEW (SDK 0.15.0): `use_admob_startpreload: true` AND a delegatable fullscreen unit (`mediation: ADMOB`, `format` inter/reward/appopen) carries a non-empty `preload_trigger_by_segment` — the per-segment override is a no-op under AdMob-managed preload, same as `preload_trigger` ≠ `INIT_CRITICAL` (SDK/admin WARN).
+- NEW (SDK 0.18.0): two `preload_trigger_by_segment` keys on the same ad unit could both match one user (a user now holds a SET of segment tags, not one) AND carry the SAME `priority` with DIFFERENT `trigger` values (e.g. `ua_traffic` + `ua_traffic_google` both at the default `priority: 0`) — the SDK breaks the tie on the alphabetically first key, which is rarely what the operator meant. Recommend setting distinct `priority` values on the overlapping segment rows.
 - `http_timeout_ms` ≥ consuming placement's `load_timeout_ms` (coroutine wrapper fires before HTTP cap — SDK WARN).
 - legacy `parallel_load` boolean present on `ad_chain` (migrate to `load_strategy`).
 - legacy `provider` field on placement or `meta_config` on an ADMOB unit (SDK drops silently — strip).
